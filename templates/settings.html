@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %} — Settings{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+  <h1>Settings</h1>
+
+  {% if config.nfc_mode == 'pn532' %}
+  <div class="banner warning">
+    Stop the player before writing tags:
+    <code>sudo systemctl stop vinyl-player</code>
+  </div>
+  {% endif %}
+
+  {% if saved %}
+  <div class="banner success">Settings saved.</div>
+  {% endif %}
+
+  <form method="POST" action="/settings">
+    <div class="field">
+      <label for="speaker_ip">Sonos Speaker IP</label>
+      <div class="speaker-row">
+        <input type="text" id="speaker_ip" name="speaker_ip"
+               value="{{ config.speaker_ip }}" placeholder="10.0.0.12">
+        <button type="button" id="discover-btn">Discover</button>
+      </div>
+      <select id="speaker-select" style="display:none">
+        <option value="">— select a speaker —</option>
+      </select>
+      <span id="discover-status" class="hint"></span>
+    </div>
+
+    <div class="field">
+      <label for="sn">Apple Music Account (sn)</label>
+      <input type="text" id="sn" name="sn" value="{{ config.sn }}">
+      <span class="hint">Found in Sonos favorites — usually 3 or 5</span>
+    </div>
+
+    <div class="field">
+      <label for="nfc_mode">NFC Mode</label>
+      <select id="nfc_mode" name="nfc_mode">
+        <option value="mock" {% if config.nfc_mode == 'mock' %}selected{% endif %}>
+          mock (Mac testing)
+        </option>
+        <option value="pn532" {% if config.nfc_mode == 'pn532' %}selected{% endif %}>
+          pn532 (Raspberry Pi)
+        </option>
+      </select>
+    </div>
+
+    <button type="submit" class="save-btn">Save</button>
+  </form>
+</div>
+
+<script>
+  const discoverBtn = document.getElementById('discover-btn');
+  const speakerSelect = document.getElementById('speaker-select');
+  const speakerIpInput = document.getElementById('speaker_ip');
+  const discoverStatus = document.getElementById('discover-status');
+
+  discoverBtn.addEventListener('click', async () => {
+    discoverBtn.disabled = true;
+    discoverStatus.textContent = 'Discovering speakers… (this takes ~10s)';
+    speakerSelect.style.display = 'none';
+    try {
+      const resp = await fetch('/speakers');
+      const speakers = await resp.json();
+      discoverStatus.textContent = '';
+      if (!speakers.length) {
+        discoverStatus.textContent = 'No speakers found.';
+        discoverBtn.disabled = false;
+        return;
+      }
+      speakerSelect.innerHTML = '<option value="">— select a speaker —</option>' +
+        speakers.map(s => `<option value="${s.ip}">${s.name} (${s.ip})</option>`).join('');
+      speakerSelect.style.display = 'block';
+      discoverBtn.disabled = false;
+    } catch (e) {
+      discoverStatus.textContent = 'Discovery failed.';
+      discoverBtn.disabled = false;
+    }
+  });
+
+  speakerSelect.addEventListener('change', () => {
+    if (speakerSelect.value) {
+      speakerIpInput.value = speakerSelect.value;
+    }
+  });
+</script>
+{% endblock %}

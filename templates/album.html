@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{% if tracks %} — {{ tracks[0].album }}{% endif %}{% endblock %}
+
+{% block content %}
+{% if tracks %}
+<div class="album-page">
+  <div class="album-header">
+    <img src="{{ tracks[0].artwork_url }}" alt="{{ tracks[0].album }}" class="album-art">
+    <div class="album-meta">
+      <h1>{{ tracks[0].album }}</h1>
+      <p class="artist">{{ tracks[0].artist }}</p>
+      <p class="tag-string">Tag: <code>apple:{{ album_id }}</code></p>
+
+      <div class="action-btns">
+        <button id="play-btn" class="play-btn" data-album-id="{{ album_id }}">
+          ▶ Play Now
+        </button>
+        <button id="write-btn" class="write-btn" data-album-id="{{ album_id }}">
+          Write to Tag
+        </button>
+      </div>
+      <p id="action-status" class="write-status"></p>
+    </div>
+  </div>
+
+  <ol class="track-list">
+    {% for track in tracks %}
+    <li class="track">
+      <span class="track-num">{{ track.track_number }}</span>
+      <span class="track-name">{{ track.name }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+</div>
+
+<script>
+  const status = document.getElementById('action-status');
+
+  async function postAction(url, albumId, btn, busyText, doneText, successMsg) {
+    btn.disabled = true;
+    btn.textContent = busyText;
+    status.textContent = '';
+    status.className = 'write-status';
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({album_id: albumId}),
+      });
+      const data = await resp.json();
+      btn.textContent = doneText;
+      btn.disabled = false;
+      status.textContent = successMsg(data);
+      status.className = 'write-status success';
+    } catch (e) {
+      btn.textContent = doneText;
+      btn.disabled = false;
+      status.textContent = 'Error — check the console.';
+      status.className = 'write-status error';
+    }
+  }
+
+  document.getElementById('play-btn').addEventListener('click', function() {
+    postAction('/play', this.dataset.albumId, this, 'Playing…', '▶ Play Now',
+      () => '✓ Playing on Sonos');
+  });
+
+  document.getElementById('write-btn').addEventListener('click', function() {
+    postAction('/write-tag', this.dataset.albumId, this, 'Writing…', 'Write to Tag',
+      data => '✓ Written: ' + data.written);
+  });
+</script>
+{% else %}
+<p>Album not found.</p>
+{% endif %}
+{% endblock %}

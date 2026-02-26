@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %} — Search{% endblock %}
+
+{% block content %}
+<div class="search-page">
+  <h1>Search Albums</h1>
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="Artist, album, or song…" autofocus>
+  </div>
+  <div id="results" class="results-grid"></div>
+</div>
+
+<script>
+  const input = document.getElementById('search-input');
+  const results = document.getElementById('results');
+  let timer;
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (!q) { results.innerHTML = ''; return; }
+    timer = setTimeout(() => fetchResults(q), 300);
+  });
+
+  async function fetchResults(q) {
+    results.innerHTML = '<p class="loading">Searching…</p>';
+    const resp = await fetch('/search?q=' + encodeURIComponent(q));
+    const albums = await resp.json();
+    if (!albums.length) {
+      results.innerHTML = '<p class="empty">No results.</p>';
+      return;
+    }
+    results.innerHTML = albums.map(a => `
+      <a href="/album/${a.id}" class="album-card">
+        <img src="${a.artwork_url}" alt="${a.name}">
+        <div class="album-info">
+          <div class="album-name">${a.name}</div>
+          <div class="album-artist">${a.artist}</div>
+        </div>
+      </a>
+    `).join('');
+  }
+</script>
+{% endblock %}
