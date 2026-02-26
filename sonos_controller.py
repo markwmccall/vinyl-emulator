@@ -1,5 +1,10 @@
+import html
+import re
+import xml.sax.saxutils as saxutils
 import soco
-from apple_music import build_track_uri, build_track_metadata
+from apple_music import build_track_uri
+
+_APPLE_MUSIC_SERVICE_TYPE = "52231"  # = 204 * 256 + 7
 
 
 def get_speakers():
@@ -7,11 +12,75 @@ def get_speakers():
     return [{"name": d.player_name, "ip": d.ip_address} for d in devices]
 
 
+def _lookup_apple_music_udn(speaker, sn):
+    """Find the Apple Music account UDN for the given serial number by scanning
+    Sonos favorites, which store the full authenticated account UDN in their
+    DIDL metadata. Falls back to the bare service-type UDN if not found.
+    """
+    fallback = f"SA_RINCON{_APPLE_MUSIC_SERVICE_TYPE}_"
+    try:
+        result = speaker.contentDirectory.Browse([
+            ("ObjectID", "FV:2"),
+            ("BrowseFlag", "BrowseDirectChildren"),
+            ("Filter", "*"),
+            ("StartingIndex", 0),
+            ("RequestedCount", 100),
+            ("SortCriteria", ""),
+        ])
+        data = result.get("Result", "")
+        for res_uri, resmd_raw in re.findall(
+            r"<[^>]+:res[^>]*>([^<]*)</[^>]+:res>.*?<[^>]+:resMD>([^<]*)</[^>]+:resMD>",
+            data,
+            re.DOTALL,
+        ):
+            if f"sn={sn}" not in res_uri:
+                continue
+            decoded = html.unescape(resmd_raw)
+            m = re.search(
+                r"SA_RINCON" + _APPLE_MUSIC_SERVICE_TYPE + r"[^<\"&\s]{0,80}", decoded
+            )
+            if m:
+                return m.group(0)
+    except Exception:
+        pass
+    return fallback
+
+
+def _build_track_didl(uri, track, udn):
+    """Build DIDL-Lite metadata matching the native Sonos app format.
+
+    Uses the Sonos content-browser item ID format (10032028song%3a{track_id})
+    so Sonos can resolve the SMAPI GetMediaMetadata call and populate the
+    queue with full title/artist/album metadata from Apple Music.
+    """
+    e = saxutils.escape
+    item_id = f"10032028song%3a{track['track_id']}"
+    return (
+        '<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/"'
+        ' xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"'
+        ' xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/"'
+        ' xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">'
+        f'<item id="{item_id}" parentID="{item_id}" restricted="true">'
+        f'<dc:title>{e(track["name"])}</dc:title>'
+        '<upnp:class>object.item.audioItem.musicTrack</upnp:class>'
+        f'<desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">{e(udn)}</desc>'
+        '</item>'
+        '</DIDL-Lite>'
+    )
+
+
 def play_album(speaker_ip, track_dicts, sn):
     speaker = soco.SoCo(speaker_ip)
+    udn = _lookup_apple_music_udn(speaker, sn)
     speaker.clear_queue()
     for track in track_dicts:
         uri = build_track_uri(track["track_id"], sn)
-        metadata = build_track_metadata(track)
-        speaker.add_uri_to_queue(uri, metadata)
+        metadata = _build_track_didl(uri, track, udn)
+        speaker.avTransport.AddURIToQueue([
+            ("InstanceID", 0),
+            ("EnqueuedURI", uri),
+            ("EnqueuedURIMetaData", metadata),
+            ("DesiredFirstTrackNumberEnqueued", 0),
+            ("EnqueueAsNext", 0),
+        ])
     speaker.play_from_queue(0)

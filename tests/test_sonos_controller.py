@@ -1,7 +1,8 @@
 import pytest
-from unittest.mock import patch, MagicMock, call
-from apple_music import build_track_uri, build_track_metadata
+from unittest.mock import patch, MagicMock
+from apple_music import build_track_uri
 
+SAMPLE_UDN = "SA_RINCON52231_X_#Svc52231-f7c0f087-Token"
 
 SAMPLE_TRACKS = [
     {
@@ -23,29 +24,53 @@ SAMPLE_TRACKS = [
 ]
 
 
+def _get_enqueued(mock_speaker, call_index):
+    """Extract the EnqueuedURI and EnqueuedURIMetaData from an AddURIToQueue call."""
+    call_params = dict(mock_speaker.avTransport.AddURIToQueue.call_args_list[call_index][0][0])
+    return call_params["EnqueuedURI"], call_params["EnqueuedURIMetaData"]
+
+
 class TestPlayAlbum:
     def test_clears_queue_first(self, mock_speaker):
         from sonos_controller import play_album
-        play_album("10.0.0.12", SAMPLE_TRACKS, "3")
+        with patch("sonos_controller._lookup_apple_music_udn", return_value=SAMPLE_UDN):
+            play_album("10.0.0.12", SAMPLE_TRACKS, "3")
         mock_speaker.clear_queue.assert_called_once()
 
     def test_adds_all_tracks(self, mock_speaker):
         from sonos_controller import play_album
-        play_album("10.0.0.12", SAMPLE_TRACKS, "3")
-        assert mock_speaker.add_uri_to_queue.call_count == 2
+        with patch("sonos_controller._lookup_apple_music_udn", return_value=SAMPLE_UDN):
+            play_album("10.0.0.12", SAMPLE_TRACKS, "3")
+        assert mock_speaker.avTransport.AddURIToQueue.call_count == 2
 
-    def test_adds_tracks_with_correct_uri_and_metadata(self, mock_speaker):
+    def test_adds_tracks_with_correct_metadata(self, mock_speaker):
         from sonos_controller import play_album
-        play_album("10.0.0.12", SAMPLE_TRACKS, "3")
-        expected_calls = [
-            call(build_track_uri(t["track_id"], "3"), build_track_metadata(t))
-            for t in SAMPLE_TRACKS
-        ]
-        mock_speaker.add_uri_to_queue.assert_has_calls(expected_calls)
+        with patch("sonos_controller._lookup_apple_music_udn", return_value=SAMPLE_UDN):
+            play_album("10.0.0.12", SAMPLE_TRACKS, "3")
+
+        uri0, meta0 = _get_enqueued(mock_speaker, 0)
+        assert uri0 == build_track_uri(SAMPLE_TRACKS[0]["track_id"], "3")
+        assert "<dc:title>Women</dc:title>" in meta0
+        assert f"10032028song%3a{SAMPLE_TRACKS[0]['track_id']}" in meta0
+        assert SAMPLE_UDN in meta0
+
+        uri1, meta1 = _get_enqueued(mock_speaker, 1)
+        assert uri1 == build_track_uri(SAMPLE_TRACKS[1]["track_id"], "3")
+        assert "<dc:title>Rocket</dc:title>" in meta1
+        assert f"10032028song%3a{SAMPLE_TRACKS[1]['track_id']}" in meta1
+
+    def test_metadata_uses_apple_music_desc(self, mock_speaker):
+        from sonos_controller import play_album
+        with patch("sonos_controller._lookup_apple_music_udn", return_value=SAMPLE_UDN):
+            play_album("10.0.0.12", SAMPLE_TRACKS, "3")
+        _, meta = _get_enqueued(mock_speaker, 0)
+        assert "SA_RINCON52231_" in meta
+        assert "RINCON_AssociatedZPUDN" not in meta
 
     def test_starts_playback(self, mock_speaker):
         from sonos_controller import play_album
-        play_album("10.0.0.12", SAMPLE_TRACKS, "3")
+        with patch("sonos_controller._lookup_apple_music_udn", return_value=SAMPLE_UDN):
+            play_album("10.0.0.12", SAMPLE_TRACKS, "3")
         mock_speaker.play_from_queue.assert_called_once_with(0)
 
 

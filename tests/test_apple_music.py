@@ -16,12 +16,12 @@ class TestBuildTrackUri:
     def test_basic(self):
         from apple_music import build_track_uri
         uri = build_track_uri(1440904001, "3")
-        assert uri == "x-sonos-http:song:1440904001.mp4?sid=204&flags=8224&sn=3"
+        assert uri == "x-sonos-http:song%3a1440904001.mp4?sid=204&flags=8232&sn=3"
 
     def test_different_sn(self):
         from apple_music import build_track_uri
         uri = build_track_uri(9999, "5")
-        assert uri == "x-sonos-http:song:9999.mp4?sid=204&flags=8224&sn=5"
+        assert uri == "x-sonos-http:song%3a9999.mp4?sid=204&flags=8232&sn=5"
 
 
 class TestUpgradeArtworkUrl:

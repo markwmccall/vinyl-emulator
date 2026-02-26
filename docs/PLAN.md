@@ -18,7 +18,10 @@ Test infrastructure:
 ## Confirmed Technical Facts (from prototype testing)
 - `sn=3` — account-specific Sonos/Apple Music service number, confirmed stable
 - Album URI format (`x-rincon-cpcontainer`) fails with UPnP Error 714 — confirmed dead end, not a config issue
-- Working URI: `x-sonos-http:song:{track_id}.mp4?sid=204&flags=8224&sn=3`
+- Working track URI: `x-sonos-http:song%3a{track_id}.mp4?sid=204&flags=8232&sn={sn}` (purchased/library tracks)
+  - `flags=8232` for purchased/library tracks; `flags=73768` for streaming-only tracks
+  - `%3a` is percent-encoded `:` — must be encoded in the URI
+  - Sonos replaces this URI with `x-sonosapi-hls-static:song%3a{id}?...` in the stored queue (HLS delivery)
 - Album playback requires queuing individual tracks — confirmed by inspecting Sonos queue during native app playback
 - iTunes Search API provides usable track IDs (no auth required)
 - Full album tracklist: `https://itunes.apple.com/lookup?id={album_id}&entity=song`
@@ -30,6 +33,20 @@ Test infrastructure:
 - Behavior on new tag scan: replace immediately (stop current, start new)
 - Speaker: global default set in config (single speaker, no per-tag)
 - Mac environment: Python 3.9, use `python3` / `pip3`
+
+### Apple Music / Sonos SMAPI Integration (hard-won findings)
+- Apple Music service type on Sonos: `52231` (= 204 × 256 + 7), `sid=204`
+- Apple Music uses AppLink authentication — token stored encrypted on the Sonos speaker
+- **Apple Music UDN format:** `SA_RINCON52231_X_#Svc52231-{token}-Token`
+  - Found by browsing Sonos favorites (`FV:2`) and inspecting `<r:resMD>` fields
+  - `_lookup_apple_music_udn(speaker, sn)` matches `sn={sn}` in the `<res>` URI to extract the right UDN
+- **Sonos SMAPI lookup trigger:** Sonos calls `GetMediaMetadata` on Apple Music SMAPI when a track is added via `AddURIToQueue`. It uses the DIDL `item id` to construct the SMAPI request — **`id="-1"` causes this lookup to fail silently**, storing only `object.item` / `application/octet-stream`
+- **Correct item ID format:** `10032028song%3a{track_id}` — Sonos content-browser ID for Apple Music library/purchased songs
+  - `10032028` = Apple Music musicTrack prefix
+  - `10092064` = Apple Music audioBroadcast (radio)
+  - `1006206c` = Apple Music playlist container
+- When SMAPI lookup succeeds, Sonos stores full metadata (title, artist, album, `musicTrack` class) in the queue — no need to include creator/album in submitted DIDL
+- `/status/accounts` endpoint on Sonos returns encrypted Apple Music account data — not useful for extracting UDN
 
 ---
 
@@ -264,21 +281,26 @@ python3 app.py --host 0.0.0.0
 ---
 
 ## DIDL-Lite Metadata
-Pass when queuing each track so Sonos displays track info:
+Pass as `EnqueuedURIMetaData` in `AddURIToQueue`. Use the minimal format matching the native Sonos app — Sonos fetches title/artist/album/artwork from Apple Music SMAPI itself using the item id and desc:
+
 ```xml
 <DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/"
            xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
            xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/"
            xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
-  <item id="-1" parentID="-1" restricted="true">
+  <item id="10032028song%3a{track_id}" parentID="10032028song%3a{track_id}" restricted="true">
     <dc:title>{track_name}</dc:title>
     <upnp:class>object.item.audioItem.musicTrack</upnp:class>
-    <dc:creator>{artist}</dc:creator>
-    <upnp:album>{album_name}</upnp:album>
-    <upnp:albumArtURI>{artwork_url}</upnp:albumArtURI>
+    <desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">{apple_music_udn}</desc>
   </item>
 </DIDL-Lite>
 ```
+
+Key points:
+- `id`/`parentID` = `10032028song%3a{track_id}` — tells Sonos how to look up the track via SMAPI
+- `desc` must contain the full Apple Music UDN (e.g. `SA_RINCON52231_X_#Svc52231-f7c0f087-Token`), obtained dynamically via `_lookup_apple_music_udn()`
+- Do NOT include `dc:creator`, `upnp:album`, or `upnp:albumArtURI` — Sonos populates these from SMAPI
+- `id="-1"` does NOT work — SMAPI lookup silently fails, queue stores bare `object.item` with no metadata
 
 ---
 

@@ -4,7 +4,7 @@ import urllib.parse
 
 
 def build_track_uri(track_id, sn):
-    return f"x-sonos-http:song:{track_id}.mp4?sid=204&flags=8224&sn={sn}"
+    return f"x-sonos-http:song%3a{track_id}.mp4?sid=204&flags=8232&sn={sn}"
 
 
 def upgrade_artwork_url(url):
