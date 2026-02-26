@@ -1,0 +1,7 @@
+soco
+flask
+requests
+pytest
+pytest-mock
+# Pi only — install separately on Pi after cloning:
+# pip3 install adafruit-circuitpython-pn532 RPi.GPIO spidev
