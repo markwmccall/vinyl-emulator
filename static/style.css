@@ -205,6 +205,12 @@ main {
 }
 .save-btn:hover { background: #f06a10; }
 
+/* Verify page */
+.verify-page h1 { font-size: 1.6rem; margin-bottom: 0.75rem; }
+.verify-instructions { color: #888; margin-bottom: 1.25rem; }
+.verify-result { margin-top: 1.5rem; }
+.verify-album { margin-top: 1rem; }
+
 @media (max-width: 600px) {
   .album-header { flex-direction: column; }
   .album-art { width: 100%; height: auto; }

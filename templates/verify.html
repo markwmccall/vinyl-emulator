@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %} — Verify Tag{% endblock %}
+
+{% block content %}
+<div class="verify-page">
+  <h1>Verify Tag</h1>
+
+  {% if nfc_mode == 'mock' %}
+  <p class="verify-instructions">Type a tag string to look up its album.</p>
+  <div class="search-bar" style="display:flex;gap:0.5rem;margin-bottom:1.5rem">
+    <input type="text" id="tag-input" placeholder="apple:1440903625" style="flex:1;margin-bottom:0">
+    <button id="read-btn" class="play-btn" style="white-space:nowrap">Look Up</button>
+  </div>
+  {% else %}
+  <p class="verify-instructions">Press the button, then tap an NFC card to read its contents.</p>
+  <button id="read-btn" class="play-btn" style="margin-bottom:1rem">Tap to Read Tag</button>
+  {% endif %}
+
+  <p id="read-status" class="write-status"></p>
+
+  <div id="result" class="verify-result" style="display:none">
+    <div class="tag-string">Tag: <code id="tag-content"></code></div>
+
+    <div id="album-result" class="verify-album" style="display:none">
+      <div class="album-header">
+        <img id="album-art" src="" alt="" class="album-art">
+        <div class="album-meta">
+          <h2 id="album-name"></h2>
+          <p class="artist" id="album-artist"></p>
+          <a id="album-link" href="" class="play-btn" style="display:inline-block;text-decoration:none;margin-top:0.5rem">
+            View Album
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div id="error-result" class="banner warning" style="display:none">
+      <span id="error-msg"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const readBtn = document.getElementById('read-btn');
+  const readStatus = document.getElementById('read-status');
+  const result = document.getElementById('result');
+  const tagContent = document.getElementById('tag-content');
+  const albumResult = document.getElementById('album-result');
+  const errorResult = document.getElementById('error-result');
+  const tagInput = document.getElementById('tag-input');
+  const mockMode = {{ 'true' if nfc_mode == 'mock' else 'false' }};
+
+  async function doLookup() {
+    readBtn.disabled = true;
+    readBtn.textContent = mockMode ? 'Looking up…' : 'Waiting for card…';
+    readStatus.textContent = '';
+    readStatus.className = 'write-status';
+    result.style.display = 'none';
+    albumResult.style.display = 'none';
+    errorResult.style.display = 'none';
+
+    let url = '/read-tag';
+    if (mockMode && tagInput) {
+      const tag = tagInput.value.trim();
+      if (!tag) {
+        readStatus.textContent = 'Enter a tag string first.';
+        readStatus.className = 'write-status error';
+        readBtn.disabled = false;
+        readBtn.textContent = 'Look Up';
+        return;
+      }
+      url += '?tag=' + encodeURIComponent(tag);
+    }
+
+    try {
+      const resp = await fetch(url);
+      const data = await resp.json();
+
+      tagContent.textContent = data.tag_string;
+      result.style.display = 'block';
+
+      if (data.error) {
+        document.getElementById('error-msg').textContent = data.error;
+        errorResult.style.display = 'block';
+      } else if (data.album) {
+        document.getElementById('album-art').src = data.album.artwork_url;
+        document.getElementById('album-art').alt = data.album.name;
+        document.getElementById('album-name').textContent = data.album.name;
+        document.getElementById('album-artist').textContent = data.album.artist;
+        document.getElementById('album-link').href = '/album/' + data.album_id;
+        albumResult.style.display = 'block';
+      }
+    } catch (e) {
+      readStatus.textContent = 'Error — check the console.';
+      readStatus.className = 'write-status error';
+    }
+
+    readBtn.textContent = mockMode ? 'Look Up' : 'Tap to Read Tag';
+    readBtn.disabled = false;
+  }
+
+  readBtn.addEventListener('click', doLookup);
+  if (tagInput) {
+    tagInput.addEventListener('keydown', e => { if (e.key === 'Enter') doLookup(); });
+  }
+</script>
+{% endblock %}

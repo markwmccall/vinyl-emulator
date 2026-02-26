@@ -23,6 +23,15 @@ def _make_nfc(nfc_mode):
     return MockNFC()
 
 
+def read_tag_once(config_path=DEFAULT_CONFIG_PATH):
+    config = _load_config(config_path)
+    nfc_mode = config.get("nfc_mode", "mock")
+    nfc = _make_nfc(nfc_mode)
+    tag_data = nfc.read_tag()
+    print(tag_data)
+    return tag_data
+
+
 def run(config_path=DEFAULT_CONFIG_PATH, simulate=None):
     config = _load_config(config_path)
     speaker_ip = config["speaker_ip"]
@@ -57,5 +66,13 @@ if __name__ == "__main__":
         metavar="TAG",
         help="Play once using this tag string (e.g. apple:1440903625) and exit",
     )
+    parser.add_argument(
+        "--read",
+        action="store_true",
+        help="Read one NFC tag, print its content, and exit (no music played)",
+    )
     args = parser.parse_args()
-    run(simulate=args.simulate)
+    if args.read:
+        read_tag_once()
+    else:
+        run(simulate=args.simulate)

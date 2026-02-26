@@ -6,7 +6,7 @@ from flask import Flask, jsonify, render_template, request
 
 import apple_music
 import sonos_controller
-from nfc_interface import MockNFC, PN532NFC
+from nfc_interface import MockNFC, PN532NFC, parse_tag_data
 from sonos_controller import play_album
 
 app = Flask(__name__)
@@ -81,6 +81,32 @@ def settings():
 @app.route("/speakers")
 def speakers():
     return jsonify(sonos_controller.get_speakers())
+
+
+@app.route("/read-tag")
+def read_tag():
+    config = _load_config()
+    # In mock mode the browser can pass the tag string directly as ?tag=
+    tag_string = request.args.get("tag")
+    if tag_string is None:
+        nfc = _make_nfc(config)
+        tag_string = nfc.read_tag()
+    try:
+        album_id = parse_tag_data(tag_string)
+    except ValueError as e:
+        return jsonify({"tag_string": tag_string, "album_id": None, "album": None, "error": str(e)})
+    tracks = apple_music.get_album_tracks(album_id)
+    album = None
+    if tracks:
+        t = tracks[0]
+        album = {"name": t["album"], "artist": t["artist"], "artwork_url": t["artwork_url"]}
+    return jsonify({"tag_string": tag_string, "album_id": album_id, "album": album, "error": None})
+
+
+@app.route("/verify")
+def verify():
+    config = _load_config()
+    return render_template("verify.html", nfc_mode=config.get("nfc_mode", "mock"))
 
 
 if __name__ == "__main__":

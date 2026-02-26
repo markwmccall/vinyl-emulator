@@ -149,3 +149,53 @@ class TestSpeakers:
         data = resp.get_json()
         assert len(data) == 2
         assert data[0]["name"] == "Family Room"
+
+
+class TestReadTag:
+    def test_returns_tag_string_and_album_id(self, client, temp_config):
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = "apple:1440903625"
+        with patch("app.MockNFC", return_value=mock_nfc), \
+             patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+            resp = client.get("/read-tag")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["tag_string"] == "apple:1440903625"
+        assert data["album_id"] == "1440903625"
+
+    def test_returns_album_info(self, client, temp_config):
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = "apple:1440903625"
+        with patch("app.MockNFC", return_value=mock_nfc), \
+             patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+            resp = client.get("/read-tag")
+        data = resp.get_json()
+        assert data["album"]["name"] == "Hysteria"
+        assert data["album"]["artist"] == "Def Leppard"
+        assert "artwork_url" in data["album"]
+
+    def test_invalid_tag_returns_error(self, client, temp_config):
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = "notvalid"
+        with patch("app.MockNFC", return_value=mock_nfc):
+            resp = client.get("/read-tag")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["error"] is not None
+
+    def test_tag_query_param_skips_nfc(self, client, temp_config):
+        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+            resp = client.get("/read-tag?tag=apple:1440903625")
+        data = resp.get_json()
+        assert data["tag_string"] == "apple:1440903625"
+        assert data["album_id"] == "1440903625"
+
+
+class TestVerify:
+    def test_returns_200(self, client):
+        resp = client.get("/verify")
+        assert resp.status_code == 200
+
+    def test_renders_read_tag_button(self, client):
+        resp = client.get("/verify")
+        assert b"read" in resp.data.lower() or b"tap" in resp.data.lower()
