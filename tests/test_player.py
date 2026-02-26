@@ -30,6 +30,14 @@ class TestSimulateMode:
         mock_tracks.assert_called_once_with("1440903625")
         mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3")
 
+    def test_simulate_plays_track(self, config_file):
+        from player import run
+        with patch("player.get_track", return_value=SAMPLE_TRACKS) as mock_track, \
+             patch("player.play_album") as mock_play:
+            run(config_path=config_file, simulate="apple:track:1440904001")
+        mock_track.assert_called_once_with("1440904001")
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3")
+
     def test_simulate_exits_after_one_play(self, config_file):
         from player import run
         with patch("player.get_album_tracks", return_value=SAMPLE_TRACKS), \

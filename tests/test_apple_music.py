@@ -1,7 +1,10 @@
 import json
 import pytest
 from unittest.mock import patch, MagicMock
-from tests.conftest import SAMPLE_SEARCH_RESPONSE, SAMPLE_LOOKUP_RESPONSE
+from tests.conftest import (
+    SAMPLE_SEARCH_RESPONSE, SAMPLE_LOOKUP_RESPONSE,
+    SAMPLE_SONG_SEARCH_RESPONSE, SAMPLE_TRACK_LOOKUP_RESPONSE,
+)
 
 
 def make_mock_response(data):
@@ -107,3 +110,52 @@ class TestGetAlbumTracks:
         with patch("urllib.request.urlopen", return_value=mock_resp):
             tracks = get_album_tracks(1440903625)
         assert "600x600bb" in tracks[0]["artwork_url"]
+
+
+class TestGetTrack:
+    def test_returns_single_item_list(self):
+        from apple_music import get_track
+        mock_resp = make_mock_response(SAMPLE_TRACK_LOOKUP_RESPONSE)
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            tracks = get_track(1440904001)
+        assert len(tracks) == 1
+
+    def test_fields_mapped_correctly(self):
+        from apple_music import get_track
+        mock_resp = make_mock_response(SAMPLE_TRACK_LOOKUP_RESPONSE)
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            tracks = get_track(1440904001)
+        t = tracks[0]
+        assert t["track_id"] == 1440904001
+        assert t["name"] == "Women"
+        assert t["artist"] == "Def Leppard"
+        assert t["album"] == "Hysteria"
+        assert "artwork_url" in t
+
+    def test_returns_empty_list_when_not_found(self):
+        from apple_music import get_track
+        mock_resp = make_mock_response({"resultCount": 0, "results": []})
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            tracks = get_track(9999)
+        assert tracks == []
+
+
+class TestSearchSongs:
+    def test_returns_song_list(self):
+        from apple_music import search_songs
+        mock_resp = make_mock_response(SAMPLE_SONG_SEARCH_RESPONSE)
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            results = search_songs("Women Def Leppard")
+        assert len(results) == 2
+        assert results[0]["id"] == 1440904001
+        assert results[0]["name"] == "Women"
+        assert results[0]["artist"] == "Def Leppard"
+        assert results[0]["album"] == "Hysteria"
+        assert "artwork_url" in results[0]
+
+    def test_empty_results(self):
+        from apple_music import search_songs
+        mock_resp = make_mock_response({"resultCount": 0, "results": []})
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            results = search_songs("xyznotasong")
+        assert results == []

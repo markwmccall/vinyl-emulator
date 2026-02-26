@@ -2,7 +2,7 @@ import argparse
 import json
 import logging
 
-from apple_music import get_album_tracks
+from apple_music import get_album_tracks, get_track
 from nfc_interface import MockNFC, PN532NFC, parse_tag_data
 from sonos_controller import play_album
 
@@ -39,8 +39,8 @@ def run(config_path=DEFAULT_CONFIG_PATH, simulate=None):
     nfc_mode = config.get("nfc_mode", "mock")
 
     if simulate is not None:
-        album_id = parse_tag_data(simulate)
-        tracks = get_album_tracks(album_id)
+        tag = parse_tag_data(simulate)
+        tracks = get_track(tag["id"]) if tag["type"] == "track" else get_album_tracks(tag["id"])
         play_album(speaker_ip, tracks, sn)
         return
 
@@ -49,10 +49,10 @@ def run(config_path=DEFAULT_CONFIG_PATH, simulate=None):
     while True:
         try:
             tag_data = nfc.read_tag()
-            album_id = parse_tag_data(tag_data)
-            tracks = get_album_tracks(album_id)
+            tag = parse_tag_data(tag_data)
+            tracks = get_track(tag["id"]) if tag["type"] == "track" else get_album_tracks(tag["id"])
             play_album(speaker_ip, tracks, sn)
-            log.info(f"Playing album {album_id}")
+            log.info(f"Playing {tag['type']} {tag['id']}")
         except KeyboardInterrupt:
             break
         except Exception as e:

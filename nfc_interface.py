@@ -1,16 +1,23 @@
 def parse_tag_data(tag_string):
-    """Parse an NDEF tag string into an album ID.
+    """Parse an NDEF tag string into a dict with 'type' and 'id'.
 
-    Expected format: apple:{collection_id}
-    Returns the collection_id as a string.
+    Supported formats:
+      apple:{collection_id}       -> {"type": "album", "id": "..."}
+      apple:track:{track_id}      -> {"type": "track", "id": "..."}
+
     Raises ValueError if the format is not recognised.
     """
     if not tag_string.startswith("apple:"):
         raise ValueError(f"Unrecognised tag format: {tag_string!r}")
-    album_id = tag_string[len("apple:"):]
-    if not album_id:
+    rest = tag_string[len("apple:"):]
+    if not rest:
         raise ValueError(f"Unrecognised tag format: {tag_string!r}")
-    return album_id
+    if rest.startswith("track:"):
+        track_id = rest[len("track:"):]
+        if not track_id:
+            raise ValueError(f"Unrecognised tag format: {tag_string!r}")
+        return {"type": "track", "id": track_id}
+    return {"type": "album", "id": rest}
 
 
 class MockNFC:

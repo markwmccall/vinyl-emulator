@@ -8,11 +8,22 @@ SAMPLE_ALBUMS = [
      "artwork_url": "https://example.com/600x600bb.jpg"},
 ]
 
+SAMPLE_SONGS = [
+    {"id": 1440904001, "name": "Women", "artist": "Def Leppard",
+     "album": "Hysteria", "artwork_url": "https://example.com/600x600bb.jpg"},
+]
+
 SAMPLE_TRACKS = [
     {"track_id": 1440904001, "name": "Women", "track_number": 1,
      "artist": "Def Leppard", "album": "Hysteria",
      "artwork_url": "https://example.com/600x600bb.jpg"},
     {"track_id": 1440904002, "name": "Rocket", "track_number": 2,
+     "artist": "Def Leppard", "album": "Hysteria",
+     "artwork_url": "https://example.com/600x600bb.jpg"},
+]
+
+SAMPLE_SINGLE_TRACK = [
+    {"track_id": 1440904001, "name": "Women", "track_number": 1,
      "artist": "Def Leppard", "album": "Hysteria",
      "artwork_url": "https://example.com/600x600bb.jpg"},
 ]
@@ -38,6 +49,15 @@ class TestSearch:
         assert data[0]["name"] == "Hysteria"
         assert data[0]["artist"] == "Def Leppard"
 
+    def test_song_search_returns_songs(self, client):
+        with patch("app.apple_music.search_songs", return_value=SAMPLE_SONGS):
+            resp = client.get("/search?q=Women&type=song")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Women"
+        assert data[0]["album"] == "Hysteria"
+
     def test_empty_query_returns_empty_list(self, client):
         resp = client.get("/search?q=")
         assert resp.status_code == 200
@@ -61,6 +81,12 @@ class TestAlbum:
         assert b"Women" in resp.data
         assert b"Rocket" in resp.data
 
+    def test_track_names_are_linked(self, client):
+        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+            resp = client.get("/album/1440903625")
+        assert b"/track/1440904001" in resp.data
+        assert b"/track/1440904002" in resp.data
+
     def test_renders_album_and_artist(self, client):
         with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/album/1440903625")
@@ -68,19 +94,55 @@ class TestAlbum:
         assert b"Def Leppard" in resp.data
 
 
+class TestTrack:
+    def test_returns_200(self, client):
+        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+            resp = client.get("/track/1440904001")
+        assert resp.status_code == 200
+
+    def test_renders_track_name(self, client):
+        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+            resp = client.get("/track/1440904001")
+        assert b"Women" in resp.data
+
+    def test_renders_artist_and_album(self, client):
+        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+            resp = client.get("/track/1440904001")
+        assert b"Def Leppard" in resp.data
+        assert b"Hysteria" in resp.data
+
+    def test_shows_tag_string(self, client):
+        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+            resp = client.get("/track/1440904001")
+        assert b"apple:track:1440904001" in resp.data
+
+
 class TestWriteTag:
-    def test_calls_write_tag_with_correct_data(self, client, temp_config):
+    def test_calls_write_tag_with_album_data(self, client, temp_config):
         mock_nfc = MagicMock()
         with patch("app.MockNFC", return_value=mock_nfc):
             resp = client.post("/write-tag", json={"album_id": "1440903625"})
         assert resp.status_code == 200
         mock_nfc.write_tag.assert_called_once_with("apple:1440903625")
 
-    def test_returns_written_tag_string(self, client, temp_config):
+    def test_returns_written_album_tag_string(self, client, temp_config):
         mock_nfc = MagicMock()
         with patch("app.MockNFC", return_value=mock_nfc):
             resp = client.post("/write-tag", json={"album_id": "1440903625"})
         assert resp.get_json()["written"] == "apple:1440903625"
+
+    def test_calls_write_tag_with_track_data(self, client, temp_config):
+        mock_nfc = MagicMock()
+        with patch("app.MockNFC", return_value=mock_nfc):
+            resp = client.post("/write-tag", json={"track_id": "1440904001"})
+        assert resp.status_code == 200
+        mock_nfc.write_tag.assert_called_once_with("apple:track:1440904001")
+
+    def test_returns_written_track_tag_string(self, client, temp_config):
+        mock_nfc = MagicMock()
+        with patch("app.MockNFC", return_value=mock_nfc):
+            resp = client.post("/write-tag", json={"track_id": "1440904001"})
+        assert resp.get_json()["written"] == "apple:track:1440904001"
 
 
 class TestAlbumPage:
@@ -102,6 +164,13 @@ class TestPlay:
             resp = client.post("/play", json={"album_id": "1440903625"})
         assert resp.status_code == 200
         mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3")
+
+    def test_plays_track(self, client, temp_config):
+        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK), \
+             patch("app.play_album") as mock_play:
+            resp = client.post("/play", json={"track_id": "1440904001"})
+        assert resp.status_code == 200
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_SINGLE_TRACK, "3")
 
     def test_returns_ok(self, client, temp_config):
         with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
@@ -152,7 +221,7 @@ class TestSpeakers:
 
 
 class TestReadTag:
-    def test_returns_tag_string_and_album_id(self, client, temp_config):
+    def test_album_tag_returns_content_id_and_type(self, client, temp_config):
         mock_nfc = MagicMock()
         mock_nfc.read_tag.return_value = "apple:1440903625"
         with patch("app.MockNFC", return_value=mock_nfc), \
@@ -161,7 +230,19 @@ class TestReadTag:
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["tag_string"] == "apple:1440903625"
-        assert data["album_id"] == "1440903625"
+        assert data["tag_type"] == "album"
+        assert data["content_id"] == "1440903625"
+
+    def test_track_tag_returns_content_id_and_type(self, client, temp_config):
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = "apple:track:1440904001"
+        with patch("app.MockNFC", return_value=mock_nfc), \
+             patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+            resp = client.get("/read-tag")
+        data = resp.get_json()
+        assert data["tag_string"] == "apple:track:1440904001"
+        assert data["tag_type"] == "track"
+        assert data["content_id"] == "1440904001"
 
     def test_returns_album_info(self, client, temp_config):
         mock_nfc = MagicMock()
@@ -188,7 +269,7 @@ class TestReadTag:
             resp = client.get("/read-tag?tag=apple:1440903625")
         data = resp.get_json()
         assert data["tag_string"] == "apple:1440903625"
-        assert data["album_id"] == "1440903625"
+        assert data["content_id"] == "1440903625"
 
 
 class TestVerify:

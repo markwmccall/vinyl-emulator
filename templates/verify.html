@@ -87,7 +87,10 @@
         document.getElementById('album-art').alt = data.album.name;
         document.getElementById('album-name').textContent = data.album.name;
         document.getElementById('album-artist').textContent = data.album.artist;
-        document.getElementById('album-link').href = '/album/' + data.album_id;
+        const linkPath = data.tag_type === 'track' ? '/track/' : '/album/';
+        document.getElementById('album-link').href = linkPath + data.content_id;
+        document.getElementById('album-link').textContent =
+          data.tag_type === 'track' ? 'View Song' : 'View Album';
         albumResult.style.display = 'block';
       }
     } catch (e) {

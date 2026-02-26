@@ -33,8 +33,12 @@ def index():
 @app.route("/search")
 def search():
     q = request.args.get("q", "").strip()
-    results = apple_music.search_albums(q) if q else []
-    return jsonify(results)
+    search_type = request.args.get("type", "album")
+    if not q:
+        return jsonify([])
+    if search_type == "song":
+        return jsonify(apple_music.search_songs(q))
+    return jsonify(apple_music.search_albums(q))
 
 
 @app.route("/album/<int:album_id>")
@@ -43,13 +47,22 @@ def album(album_id):
     return render_template("album.html", album_id=album_id, tracks=tracks)
 
 
+@app.route("/track/<int:track_id>")
+def track(track_id):
+    tracks = apple_music.get_track(track_id)
+    t = tracks[0] if tracks else None
+    return render_template("track.html", track_id=track_id, track=t)
+
+
 @app.route("/write-tag", methods=["POST"])
 def write_tag():
     data = request.get_json()
-    album_id = data["album_id"]
     config = _load_config()
     nfc = _make_nfc(config)
-    tag_data = f"apple:{album_id}"
+    if "track_id" in data:
+        tag_data = f"apple:track:{data['track_id']}"
+    else:
+        tag_data = f"apple:{data['album_id']}"
     nfc.write_tag(tag_data)
     return jsonify({"status": "ok", "written": tag_data})
 
@@ -57,9 +70,11 @@ def write_tag():
 @app.route("/play", methods=["POST"])
 def play():
     data = request.get_json()
-    album_id = data["album_id"]
     config = _load_config()
-    tracks = apple_music.get_album_tracks(album_id)
+    if "track_id" in data:
+        tracks = apple_music.get_track(data["track_id"])
+    else:
+        tracks = apple_music.get_album_tracks(data["album_id"])
     play_album(config["speaker_ip"], tracks, config["sn"])
     return jsonify({"status": "ok"})
 
@@ -86,21 +101,27 @@ def speakers():
 @app.route("/read-tag")
 def read_tag():
     config = _load_config()
-    # In mock mode the browser can pass the tag string directly as ?tag=
     tag_string = request.args.get("tag")
     if tag_string is None:
         nfc = _make_nfc(config)
         tag_string = nfc.read_tag()
     try:
-        album_id = parse_tag_data(tag_string)
+        tag = parse_tag_data(tag_string)
     except ValueError as e:
-        return jsonify({"tag_string": tag_string, "album_id": None, "album": None, "error": str(e)})
-    tracks = apple_music.get_album_tracks(album_id)
+        return jsonify({"tag_string": tag_string, "tag_type": None, "content_id": None,
+                        "album": None, "error": str(e)})
+    tag_type = tag["type"]
+    content_id = tag["id"]
+    if tag_type == "track":
+        tracks = apple_music.get_track(content_id)
+    else:
+        tracks = apple_music.get_album_tracks(content_id)
     album = None
     if tracks:
         t = tracks[0]
         album = {"name": t["album"], "artist": t["artist"], "artwork_url": t["artwork_url"]}
-    return jsonify({"tag_string": tag_string, "album_id": album_id, "album": album, "error": None})
+    return jsonify({"tag_string": tag_string, "tag_type": tag_type, "content_id": content_id,
+                    "album": album, "error": None})
 
 
 @app.route("/verify")

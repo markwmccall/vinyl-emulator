@@ -19,6 +19,45 @@ SAMPLE_SEARCH_RESPONSE = {
 }
 
 # Note: first item is the album row (wrapperType "collection") — must be filtered out
+SAMPLE_SONG_SEARCH_RESPONSE = {
+    "resultCount": 2,
+    "results": [
+        {
+            "wrapperType": "track",
+            "trackId": 1440904001,
+            "trackName": "Women",
+            "trackNumber": 1,
+            "artistName": "Def Leppard",
+            "collectionName": "Hysteria",
+            "artworkUrl100": "https://example.com/100x100bb.jpg",
+        },
+        {
+            "wrapperType": "track",
+            "trackId": 1440904002,
+            "trackName": "Rocket",
+            "trackNumber": 2,
+            "artistName": "Def Leppard",
+            "collectionName": "Hysteria",
+            "artworkUrl100": "https://example.com/100x100bb.jpg",
+        },
+    ],
+}
+
+SAMPLE_TRACK_LOOKUP_RESPONSE = {
+    "resultCount": 1,
+    "results": [
+        {
+            "wrapperType": "track",
+            "trackId": 1440904001,
+            "trackName": "Women",
+            "trackNumber": 1,
+            "artistName": "Def Leppard",
+            "collectionName": "Hysteria",
+            "artworkUrl100": "https://example.com/100x100bb.jpg",
+        },
+    ],
+}
+
 SAMPLE_LOOKUP_RESPONSE = {
     "resultCount": 3,
     "results": [

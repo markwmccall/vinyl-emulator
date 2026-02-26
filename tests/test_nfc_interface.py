@@ -3,9 +3,13 @@ from unittest.mock import patch
 
 
 class TestParseTagData:
-    def test_valid_apple_tag(self):
+    def test_valid_album_tag(self):
         from nfc_interface import parse_tag_data
-        assert parse_tag_data("apple:1440903625") == "1440903625"
+        assert parse_tag_data("apple:1440903625") == {"type": "album", "id": "1440903625"}
+
+    def test_valid_track_tag(self):
+        from nfc_interface import parse_tag_data
+        assert parse_tag_data("apple:track:1440904001") == {"type": "track", "id": "1440904001"}
 
     def test_invalid_format_raises(self):
         from nfc_interface import parse_tag_data
@@ -21,6 +25,16 @@ class TestParseTagData:
         from nfc_interface import parse_tag_data
         with pytest.raises(ValueError):
             parse_tag_data("")
+
+    def test_apple_with_no_id_raises(self):
+        from nfc_interface import parse_tag_data
+        with pytest.raises(ValueError):
+            parse_tag_data("apple:")
+
+    def test_track_with_no_id_raises(self):
+        from nfc_interface import parse_tag_data
+        with pytest.raises(ValueError):
+            parse_tag_data("apple:track:")
 
 
 class TestMockNFC:

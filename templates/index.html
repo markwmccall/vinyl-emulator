@@ -3,17 +3,34 @@
 
 {% block content %}
 <div class="search-page">
-  <h1>Search Albums</h1>
   <div class="search-bar">
     <input type="text" id="search-input" placeholder="Artist, album, or song…" autofocus>
   </div>
+
+  <div class="search-tabs">
+    <button class="tab-btn active" data-type="album">Albums</button>
+    <button class="tab-btn" data-type="song">Songs</button>
+  </div>
+
   <div id="results" class="results-grid"></div>
 </div>
 
 <script>
   const input = document.getElementById('search-input');
   const results = document.getElementById('results');
+  const tabBtns = document.querySelectorAll('.tab-btn');
   let timer;
+  let activeType = 'album';
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeType = btn.dataset.type;
+      const q = input.value.trim();
+      if (q) fetchResults(q);
+    });
+  });
 
   input.addEventListener('input', () => {
     clearTimeout(timer);
@@ -24,21 +41,34 @@
 
   async function fetchResults(q) {
     results.innerHTML = '<p class="loading">Searching…</p>';
-    const resp = await fetch('/search?q=' + encodeURIComponent(q));
-    const albums = await resp.json();
-    if (!albums.length) {
+    const resp = await fetch('/search?q=' + encodeURIComponent(q) + '&type=' + activeType);
+    const items = await resp.json();
+    if (!items.length) {
       results.innerHTML = '<p class="empty">No results.</p>';
       return;
     }
-    results.innerHTML = albums.map(a => `
-      <a href="/album/${a.id}" class="album-card">
-        <img src="${a.artwork_url}" alt="${a.name}">
-        <div class="album-info">
-          <div class="album-name">${a.name}</div>
-          <div class="album-artist">${a.artist}</div>
-        </div>
-      </a>
-    `).join('');
+    if (activeType === 'album') {
+      results.innerHTML = items.map(a => `
+        <a href="/album/${a.id}" class="album-card">
+          <img src="${a.artwork_url}" alt="${a.name}">
+          <div class="album-info">
+            <div class="album-name">${a.name}</div>
+            <div class="album-artist">${a.artist}</div>
+          </div>
+        </a>
+      `).join('');
+    } else {
+      results.innerHTML = items.map(s => `
+        <a href="/track/${s.id}" class="album-card">
+          <img src="${s.artwork_url}" alt="${s.name}">
+          <div class="album-info">
+            <div class="album-name">${s.name}</div>
+            <div class="album-artist">${s.artist}</div>
+            <div class="album-artist" style="color:#666;font-size:0.74rem">${s.album}</div>
+          </div>
+        </a>
+      `).join('');
+    }
   }
 </script>
 {% endblock %}

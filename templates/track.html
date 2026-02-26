@@ -1,42 +1,34 @@
 {% extends "base.html" %}
-{% block title %}{% if tracks %} — {{ tracks[0].album }}{% endif %}{% endblock %}
+{% block title %}{% if track %} — {{ track.name }}{% endif %}{% endblock %}
 
 {% block content %}
-{% if tracks %}
+{% if track %}
 <div class="album-page">
   <div class="album-header">
-    <img src="{{ tracks[0].artwork_url }}" alt="{{ tracks[0].album }}" class="album-art">
+    <img src="{{ track.artwork_url }}" alt="{{ track.album }}" class="album-art">
     <div class="album-meta">
-      <h1>{{ tracks[0].album }}</h1>
-      <p class="artist">{{ tracks[0].artist }}</p>
-      <p class="tag-string">Tag: <code>apple:{{ album_id }}</code></p>
+      <h1>{{ track.name }}</h1>
+      <p class="artist">{{ track.artist }}</p>
+      <p class="artist" style="font-size:0.95rem; color:#888; margin-top:-0.75rem">{{ track.album }}</p>
+      <p class="tag-string">Tag: <code>apple:track:{{ track_id }}</code></p>
 
       <div class="action-btns">
-        <button id="play-btn" class="play-btn" data-album-id="{{ album_id }}">
+        <button id="play-btn" class="play-btn" data-track-id="{{ track_id }}">
           ▶ Play Now
         </button>
-        <button id="write-btn" class="write-btn" data-album-id="{{ album_id }}">
+        <button id="write-btn" class="write-btn" data-track-id="{{ track_id }}">
           Write to Tag
         </button>
       </div>
       <p id="action-status" class="write-status"></p>
     </div>
   </div>
-
-  <ol class="track-list">
-    {% for track in tracks %}
-    <li class="track">
-      <span class="track-num">{{ track.track_number }}</span>
-      <a href="/track/{{ track.track_id }}" class="track-name">{{ track.name }}</a>
-    </li>
-    {% endfor %}
-  </ol>
 </div>
 
 <script>
   const status = document.getElementById('action-status');
 
-  async function postAction(url, albumId, btn, busyText, doneText, successMsg) {
+  async function postAction(url, body, btn, busyText, doneText, successMsg) {
     btn.disabled = true;
     btn.textContent = busyText;
     status.textContent = '';
@@ -45,7 +37,7 @@
       const resp = await fetch(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({album_id: albumId}),
+        body: JSON.stringify(body),
       });
       const data = await resp.json();
       btn.textContent = doneText;
@@ -61,16 +53,16 @@
   }
 
   document.getElementById('play-btn').addEventListener('click', function() {
-    postAction('/play', this.dataset.albumId, this, 'Playing…', '▶ Play Now',
+    postAction('/play', {track_id: this.dataset.trackId}, this, 'Playing…', '▶ Play Now',
       () => '✓ Playing on Sonos');
   });
 
   document.getElementById('write-btn').addEventListener('click', function() {
-    postAction('/write-tag', this.dataset.albumId, this, 'Writing…', 'Write to Tag',
+    postAction('/write-tag', {track_id: this.dataset.trackId}, this, 'Writing…', 'Write to Tag',
       data => '✓ Written: ' + data.written);
   });
 </script>
 {% else %}
-<p>Album not found.</p>
+<p>Track not found.</p>
 {% endif %}
 {% endblock %}
