@@ -1,5 +1,10 @@
 # Vinyl Emulator — TODO / Backlog
 
+## Housekeeping
+
+- [ ] **Remove unused files** — delete `diagnose_queue.py` (debug script, not part of the app); delete `config.example.json` (duplicate of `config.json.example`)
+- [ ] **Code review** — read through all production modules (`app.py`, `apple_music.py`, `sonos_controller.py`, `nfc_interface.py`, `player.py`) looking for dead code, inconsistencies, missing error handling at system boundaries, and anything that would be a problem before hardware arrives
+
 ## CI / GitHub Actions
 
 - [ ] **Add GitHub Actions workflow** — run `pytest` on every push and pull request
@@ -36,7 +41,7 @@
 ## Enhancements
 
 - [ ] **Settings page: Discover button** — currently `/speakers` is called automatically; add a manual "Discover Speakers" button so the 5–10 second scan only runs on request
-- [ ] **Player process management from web UI** — on Pi/pn532 mode, Settings page could show a "Stop Player / Start Player" button pair (calls `systemctl stop/start vinyl-player` via subprocess)
+- [x] **Player process management from web UI** — Settings page shows live status badge + Stop/Start buttons (calls `systemctl stop/start vinyl-player` via subprocess, only visible in pn532 mode)
 - [ ] **iPhone NFC shortcut sticker** — write `http://vinyl-pi.local:5000` as a URL NDEF record on a spare sticker and affix to the Pi enclosure; tapping with iPhone opens the web UI directly
 - [ ] **mDNS / hostname verification** — confirm `vinyl-pi.local` resolves from Mac and iPhone once Pi is running
 - [ ] **Error page for unknown album/track IDs** — `/album/<id>` and `/track/<id>` currently render blank if iTunes returns nothing; add a friendly 404 response

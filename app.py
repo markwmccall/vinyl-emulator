@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import subprocess
 
 from flask import Flask, jsonify, render_template, request
 
@@ -122,6 +123,25 @@ def read_tag():
         album = {"name": t["album"], "artist": t["artist"], "artwork_url": t["artwork_url"]}
     return jsonify({"tag_string": tag_string, "tag_type": tag_type, "content_id": content_id,
                     "album": album, "error": None})
+
+
+@app.route("/player/status")
+def player_status():
+    result = subprocess.run(
+        ["systemctl", "is-active", "vinyl-player"],
+        capture_output=True, text=True
+    )
+    return jsonify({"status": result.stdout.strip()})
+
+
+@app.route("/player/control", methods=["POST"])
+def player_control():
+    data = request.get_json()
+    action = data.get("action") if data else None
+    if action not in ("stop", "start"):
+        return jsonify({"error": "invalid action"}), 400
+    subprocess.run(["sudo", "systemctl", action, "vinyl-player"], check=False)
+    return jsonify({"status": "ok", "action": action})
 
 
 @app.route("/verify")

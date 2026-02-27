@@ -151,6 +151,44 @@ a.track-name:hover { color: #fff; text-decoration: underline; }
 /* Settings page */
 .settings-page h1 { font-size: 1.6rem; margin-bottom: 1.5rem; }
 
+.player-control-section {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.player-control-section h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: #aaa; margin-bottom: 0.4rem; }
+.player-control-section p { font-size: 0.88rem; color: #888; margin-bottom: 0.75rem; }
+
+.player-status-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+
+.player-badge {
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.2em 0.65em;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+}
+.badge-running { background: #0d2e0d; border: 1px solid #2a6a2a; color: #6d6; }
+.badge-stopped { background: #2e1a00; border: 1px solid #6a3a00; color: #fa0; }
+.badge-unknown { background: #222; border: 1px solid #444; color: #888; }
+
+#player-stop-btn, #player-start-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s;
+}
+#player-stop-btn { background: #7a1a1a; color: #fff; }
+#player-stop-btn:hover:not(:disabled) { background: #9a2222; }
+#player-start-btn { background: #1a7a1a; color: #fff; }
+#player-start-btn:hover:not(:disabled) { background: #228a22; }
+#player-stop-btn:disabled, #player-start-btn:disabled { background: #333; color: #666; cursor: default; }
+
 .banner {
   padding: 0.75rem 1rem;
   border-radius: 6px;

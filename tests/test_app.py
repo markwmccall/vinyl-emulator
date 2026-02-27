@@ -280,3 +280,49 @@ class TestVerify:
     def test_renders_read_tag_button(self, client):
         resp = client.get("/verify")
         assert b"read" in resp.data.lower() or b"tap" in resp.data.lower()
+
+
+class TestPlayerStatus:
+    def test_returns_active_status(self, client):
+        mock_result = MagicMock()
+        mock_result.stdout = "active\n"
+        with patch("app.subprocess.run", return_value=mock_result):
+            resp = client.get("/player/status")
+        assert resp.status_code == 200
+        assert resp.get_json()["status"] == "active"
+
+    def test_returns_inactive_status(self, client):
+        mock_result = MagicMock()
+        mock_result.stdout = "inactive\n"
+        with patch("app.subprocess.run", return_value=mock_result):
+            resp = client.get("/player/status")
+        assert resp.get_json()["status"] == "inactive"
+
+
+class TestPlayerControl:
+    def test_stop_calls_systemctl(self, client):
+        with patch("app.subprocess.run") as mock_run:
+            resp = client.post("/player/control", json={"action": "stop"})
+        assert resp.status_code == 200
+        mock_run.assert_called_once_with(
+            ["sudo", "systemctl", "stop", "vinyl-player"], check=False
+        )
+
+    def test_start_calls_systemctl(self, client):
+        with patch("app.subprocess.run") as mock_run:
+            resp = client.post("/player/control", json={"action": "start"})
+        assert resp.status_code == 200
+        mock_run.assert_called_once_with(
+            ["sudo", "systemctl", "start", "vinyl-player"], check=False
+        )
+
+    def test_invalid_action_returns_400(self, client):
+        resp = client.post("/player/control", json={"action": "restart; rm -rf /"})
+        assert resp.status_code == 400
+
+    def test_returns_ok_and_action(self, client):
+        with patch("app.subprocess.run"):
+            resp = client.post("/player/control", json={"action": "stop"})
+        data = resp.get_json()
+        assert data["status"] == "ok"
+        assert data["action"] == "stop"
