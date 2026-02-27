@@ -2,7 +2,7 @@
 
 ## Housekeeping
 
-- [ ] **Remove unused files** — delete `diagnose_queue.py` (debug script, not part of the app); delete `config.example.json` (duplicate of `config.json.example`)
+- [x] **Remove unused files** — deleted `diagnose_queue.py` (debug script) and `config.example.json` (duplicate of `config.json.example`)
 - [ ] **Code review** — read through all production modules (`app.py`, `apple_music.py`, `sonos_controller.py`, `nfc_interface.py`, `player.py`) looking for dead code, inconsistencies, missing error handling at system boundaries, and anything that would be a problem before hardware arrives
 
 ## CI / GitHub Actions
@@ -39,6 +39,8 @@
 - [ ] **Reboot test** — tap tag after cold boot, music plays without SSH
 
 ## Enhancements
+
+- [ ] **Serve web UI on port 80** — change `vinyl-web.service` and `setup.sh` to bind on port 80 so the URL is `http://vinyl-pi.local` instead of `http://vinyl-pi.local:5000`; port 80 requires either running as root (not recommended) or using `authbind` / a reverse proxy (nginx)
 
 - [ ] **Settings page: Discover button** — currently `/speakers` is called automatically; add a manual "Discover Speakers" button so the 5–10 second scan only runs on request
 - [x] **Player process management from web UI** — Settings page shows live status badge + Stop/Start buttons (calls `systemctl stop/start vinyl-player` via subprocess, only visible in pn532 mode)
