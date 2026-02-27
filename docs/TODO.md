@@ -29,8 +29,8 @@
 
 ## Production (Phase 6)
 
-- [ ] **Create systemd service files** — `vinyl-player.service` and `vinyl-web.service` (see PLAN.md for content)
-- [ ] **Enable services on boot** — `sudo systemctl enable vinyl-player vinyl-web`
+- [x] **Create systemd service files** — `etc/vinyl-player.service` and `etc/vinyl-web.service` committed
+- [x] **Create `setup.sh`** — one-shot Pi setup: installs deps, enables SPI, installs services, prompts reboot
 - [ ] **Reboot test** — tap tag after cold boot, music plays without SSH
 
 ## Enhancements

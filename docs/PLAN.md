@@ -95,6 +95,10 @@ vinyl-emulator/
 │   ├── test_nfc_interface.py
 │   ├── test_player.py
 │   └── test_app.py
+├── etc/
+│   ├── vinyl-player.service  # systemd service template (player daemon)
+│   └── vinyl-web.service     # systemd service template (web UI)
+├── setup.sh              # One-shot Pi setup script (run once after clone)
 ├── docs/
 │   ├── PLAN.md
 │   └── TODO.md
@@ -292,14 +296,22 @@ Key points:
 
 ### Phase 5 — Deploy to Pi & Real NFC
 1. Push project to GitHub from Mac
-2. On Pi: `git clone <repo>`, `pip3 install -r requirements.txt`
-3. `cp config.json.example config.json` — edit with `nfc_mode: "pn532"`, real IP + sn
-4. Implement `PN532NFC.read_tag()` and `PN532NFC.write_tag()` in `nfc_interface.py`
+2. On Pi: `git clone <repo> && cd vinyl-emulator`
+3. Run setup script: `chmod +x setup.sh && ./setup.sh`
+   - Installs system packages and Python dependencies
+   - Enables SPI, substitutes your username/path into systemd service files
+   - Creates `config.json` with `nfc_mode=pn532`
+   - Enables `vinyl-player` and `vinyl-web` services on boot
+   - Prompts to reboot (required for SPI)
+4. After reboot: open `http://vinyl-pi.local:5000` → Settings → set speaker IP and sn
+5. Implement `PN532NFC.read_tag()` and `PN532NFC.write_tag()` in `nfc_interface.py`
    - Key Adafruit API: `pn532.read_passive_target(timeout=0.5)` for reading, `pn532.ntag2xx_write_block()` for writing
    - Reference: https://docs.circuitpython.org/projects/pn532/en/latest/
-5. `pkill -f player.py` → test write via web UI → `python3 player.py` → tap tag → music plays
+6. `sudo systemctl stop vinyl-player` → test write via web UI → `sudo systemctl start vinyl-player` → tap tag → music plays
 
 ### Phase 6 — Production
+
+`setup.sh` handles all of this automatically. Manual steps for reference:
 
 **`/etc/systemd/system/vinyl-player.service`**
 ```ini
