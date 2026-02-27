@@ -79,6 +79,42 @@ class TestPlayAlbum:
         mock_speaker.play_from_queue.assert_not_called()
 
 
+class TestDetectAppleMusicSn:
+    def test_returns_sn_from_favorites(self, mock_speaker):
+        xml = (
+            '<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">'
+            '<item><res protocolInfo="sonos.com-http:*:audio/mp4:*">'
+            'x-sonos-http:song%3A1440904001.mp4?sid=204&amp;flags=8232&amp;sn=3'
+            '</res></item>'
+            '</DIDL-Lite>'
+        )
+        mock_speaker.contentDirectory.Browse.return_value = {"Result": xml}
+        from sonos_controller import detect_apple_music_sn
+        assert detect_apple_music_sn("10.0.0.12") == "3"
+
+    def test_ignores_non_apple_music_services(self, mock_speaker):
+        xml = (
+            '<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">'
+            '<item><res protocolInfo="x-sonosapi-stream:*:*:*">'
+            'x-sonosapi-stream:s23895?sid=333&amp;flags=8292&amp;sn=7'
+            '</res></item>'
+            '</DIDL-Lite>'
+        )
+        mock_speaker.contentDirectory.Browse.return_value = {"Result": xml}
+        from sonos_controller import detect_apple_music_sn
+        assert detect_apple_music_sn("10.0.0.12") is None
+
+    def test_returns_none_when_no_apple_music_favorites(self, mock_speaker):
+        mock_speaker.contentDirectory.Browse.return_value = {"Result": "<DIDL-Lite></DIDL-Lite>"}
+        from sonos_controller import detect_apple_music_sn
+        assert detect_apple_music_sn("10.0.0.12") is None
+
+    def test_returns_none_on_exception(self, mock_speaker):
+        mock_speaker.contentDirectory.Browse.side_effect = Exception("network error")
+        from sonos_controller import detect_apple_music_sn
+        assert detect_apple_music_sn("10.0.0.12") is None
+
+
 class TestTransport:
     def test_pause_calls_speaker_pause(self, mock_speaker):
         from sonos_controller import pause

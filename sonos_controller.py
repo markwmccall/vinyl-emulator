@@ -69,6 +69,35 @@ def _build_track_didl(track, udn):
     )
 
 
+def detect_apple_music_sn(speaker_ip):
+    """Scan Sonos favorites for an Apple Music URI and extract the sn value.
+
+    Returns the sn as a string, or None if not found (e.g., no Apple Music
+    favorites saved in Sonos).
+    """
+    speaker = soco.SoCo(speaker_ip)
+    try:
+        result = speaker.contentDirectory.Browse([
+            ("ObjectID", "FV:2"),
+            ("BrowseFlag", "BrowseDirectChildren"),
+            ("Filter", "*"),
+            ("StartingIndex", 0),
+            ("RequestedCount", 100),
+            ("SortCriteria", ""),
+        ])
+        data = result.get("Result", "")
+        for res_uri in re.findall(r"<(?:[^>]+:)?res[^>]*>([^<]*)</(?:[^>]+:)?res>", data):
+            uri = html.unescape(res_uri)
+            if "sid=204" not in uri:
+                continue
+            m = re.search(r"[?&]sn=(\d+)", uri)
+            if m:
+                return m.group(1)
+    except Exception:
+        pass
+    return None
+
+
 def pause(speaker_ip):
     soco.SoCo(speaker_ip).pause()
 

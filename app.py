@@ -7,7 +7,7 @@ from flask import Flask, abort, jsonify, render_template, request
 
 import apple_music
 from nfc_interface import MockNFC, PN532NFC, parse_tag_data
-from sonos_controller import get_speakers, pause, play_album, resume, stop
+from sonos_controller import detect_apple_music_sn, get_speakers, pause, play_album, resume, stop
 
 app = Flask(__name__)
 
@@ -153,6 +153,18 @@ def player_control():
         return jsonify({"error": "invalid action"}), 400
     subprocess.run(["sudo", "systemctl", action, "vinyl-player"], check=False)
     return jsonify({"status": "ok", "action": action})
+
+
+@app.route("/detect-sn")
+def detect_sn():
+    speaker_ip = request.args.get("speaker_ip") or _load_config().get("speaker_ip", "")
+    if not speaker_ip:
+        return jsonify({"error": "no speaker configured"}), 400
+    sn = detect_apple_music_sn(speaker_ip)
+    if sn is None:
+        return jsonify({"error": "No Apple Music favorites found in Sonos — enter 3 or 5 manually"}), 404
+    return jsonify({"sn": sn})
+
 
 
 @app.route("/health")

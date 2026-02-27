@@ -57,7 +57,7 @@ chmod +x setup.sh && ./setup.sh
 
 It will prompt you to reboot at the end — SPI requires a reboot to take effect.
 
-After rebooting, open `http://vinyl-pi.local:5000` in your browser, go to **Settings**, and enter your Sonos speaker IP and `sn` value. That's the only manual configuration step.
+After rebooting, open `http://vinyl-pi.local:5000` in your browser and go to **Settings**. Use the **Discover** button to find your Sonos speaker IP, and the **Detect** button to find your `sn` value automatically. See [Configuration](#configuration) for details on `sn`.
 
 ---
 
@@ -78,7 +78,7 @@ python3 app.py                        # binds to 127.0.0.1:5000
 | Key | Description |
 |-----|-------------|
 | `speaker_ip` | IP address of your Sonos speaker. Use the Discover button in Settings to find it. |
-| `sn` | Apple Music account serial number used by Sonos. Usually `3` or `5`. Find it in Settings → Discover, or check Sonos favorites that include Apple Music content. |
+| `sn` | Apple Music service number assigned by Sonos — identifies which Apple Music account is linked. Use the **Detect** button in Settings to find it automatically (requires at least one Apple Music favorite saved in the Sonos app). If detection finds nothing, try small numbers like `3` or `5`. |
 | `nfc_mode` | `mock` for development (reads tag strings from stdin), `pn532` for Raspberry Pi with the Waveshare HAT. |
 
 ---
