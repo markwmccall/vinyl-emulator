@@ -10,7 +10,7 @@
 - [ ] **Add GitHub Actions workflow** — run `pytest` on every push and pull request
   - File: `.github/workflows/tests.yml`
   - Trigger: `push` and `pull_request` on `main`
-  - Steps: checkout → set up Python 3.11 → `pip install -r requirements.txt` → `python -m pytest tests/ -v`
+  - Steps: checkout → set up Python 3.11 → `pip install -r requirements-dev.txt` → `python -m pytest tests/ -v`
   - Badge in README
 
 ## Packaging / Dependencies

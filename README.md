@@ -60,7 +60,7 @@ After rebooting, open `http://vinyl-pi.local:5000` in your browser, go to **Sett
 ## Mac / development setup
 
 ```bash
-pip3 install flask soco pytest pytest-mock
+pip3 install -r requirements-dev.txt
 cp config.json.example config.json   # set nfc_mode: "mock"
 python3 app.py                        # binds to 127.0.0.1:5000
 ```
