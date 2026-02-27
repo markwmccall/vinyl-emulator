@@ -46,7 +46,7 @@ def _lookup_apple_music_udn(speaker, sn):
     return fallback
 
 
-def _build_track_didl(uri, track, udn):
+def _build_track_didl(track, udn):
     """Build DIDL-Lite metadata matching the native Sonos app format.
 
     Uses the Sonos content-browser item ID format (10032028song%3a{track_id})
@@ -75,7 +75,7 @@ def play_album(speaker_ip, track_dicts, sn):
     speaker.clear_queue()
     for track in track_dicts:
         uri = build_track_uri(track["track_id"], sn)
-        metadata = _build_track_didl(uri, track, udn)
+        metadata = _build_track_didl(track, udn)
         speaker.avTransport.AddURIToQueue([
             ("InstanceID", 0),
             ("EnqueuedURI", uri),

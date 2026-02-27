@@ -3,7 +3,7 @@
 ## Housekeeping
 
 - [x] **Remove unused files** — deleted `diagnose_queue.py` (debug script) and `config.example.json` (duplicate of `config.json.example`)
-- [ ] **Code review** — read through all production modules (`app.py`, `apple_music.py`, `sonos_controller.py`, `nfc_interface.py`, `player.py`) looking for dead code, inconsistencies, missing error handling at system boundaries, and anything that would be a problem before hardware arrives
+- [x] **Code review** — read through all production modules (`app.py`, `apple_music.py`, `sonos_controller.py`, `nfc_interface.py`, `player.py`) looking for dead code, inconsistencies, missing error handling at system boundaries, and anything that would be a problem before hardware arrives
 
 ## CI / GitHub Actions
 

@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import os
 
 from apple_music import get_album_tracks, get_track
 from nfc_interface import MockNFC, PN532NFC, parse_tag_data
@@ -9,7 +10,7 @@ from sonos_controller import play_album
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 log = logging.getLogger(__name__)
 
-DEFAULT_CONFIG_PATH = "config.json"
+DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 
 def _load_config(config_path):

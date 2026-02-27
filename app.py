@@ -6,9 +6,8 @@ import subprocess
 from flask import Flask, jsonify, render_template, request
 
 import apple_music
-import sonos_controller
 from nfc_interface import MockNFC, PN532NFC, parse_tag_data
-from sonos_controller import play_album
+from sonos_controller import get_speakers, play_album
 
 app = Flask(__name__)
 
@@ -58,6 +57,8 @@ def track(track_id):
 @app.route("/write-tag", methods=["POST"])
 def write_tag():
     data = request.get_json()
+    if not data or ("track_id" not in data and "album_id" not in data):
+        return jsonify({"error": "album_id or track_id required"}), 400
     config = _load_config()
     nfc = _make_nfc(config)
     if "track_id" in data:
@@ -71,6 +72,8 @@ def write_tag():
 @app.route("/play", methods=["POST"])
 def play():
     data = request.get_json()
+    if not data or ("track_id" not in data and "album_id" not in data):
+        return jsonify({"error": "album_id or track_id required"}), 400
     config = _load_config()
     if "track_id" in data:
         tracks = apple_music.get_track(data["track_id"])
@@ -96,7 +99,7 @@ def settings():
 
 @app.route("/speakers")
 def speakers():
-    return jsonify(sonos_controller.get_speakers())
+    return jsonify(get_speakers())
 
 
 @app.route("/read-tag")

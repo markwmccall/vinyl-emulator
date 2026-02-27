@@ -144,6 +144,14 @@ class TestWriteTag:
             resp = client.post("/write-tag", json={"track_id": "1440904001"})
         assert resp.get_json()["written"] == "apple:track:1440904001"
 
+    def test_missing_body_returns_400(self, client):
+        resp = client.post("/write-tag", data="", content_type="application/json")
+        assert resp.status_code == 400
+
+    def test_missing_id_returns_400(self, client):
+        resp = client.post("/write-tag", json={"other": "value"})
+        assert resp.status_code == 400
+
 
 class TestAlbumPage:
     def test_shows_album_id(self, client):
@@ -178,6 +186,14 @@ class TestPlay:
             resp = client.post("/play", json={"album_id": "1440903625"})
         assert resp.get_json()["status"] == "ok"
 
+    def test_missing_body_returns_400(self, client):
+        resp = client.post("/play", data="", content_type="application/json")
+        assert resp.status_code == 400
+
+    def test_missing_id_returns_400(self, client):
+        resp = client.post("/play", json={"other": "value"})
+        assert resp.status_code == 400
+
 
 class TestSettings:
     def test_get_returns_200(self, client, temp_config):
@@ -209,7 +225,7 @@ class TestSettings:
 
 class TestSpeakers:
     def test_returns_json_list(self, client):
-        with patch("app.sonos_controller.get_speakers", return_value=[
+        with patch("app.get_speakers", return_value=[
             {"name": "Family Room", "ip": "10.0.0.12"},
             {"name": "Foyer", "ip": "10.0.0.8"},
         ]):

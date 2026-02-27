@@ -39,6 +39,9 @@
     timer = setTimeout(() => fetchResults(q), 300);
   });
 
+  // Re-run search if the browser restored a value into the input (back navigation)
+  if (input.value.trim()) fetchResults(input.value.trim());
+
   async function fetchResults(q) {
     results.innerHTML = '<p class="loading">Searching…</p>';
     const resp = await fetch('/search?q=' + encodeURIComponent(q) + '&type=' + activeType);

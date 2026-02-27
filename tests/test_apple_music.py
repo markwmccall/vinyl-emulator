@@ -38,22 +38,6 @@ class TestUpgradeArtworkUrl:
         assert upgrade_artwork_url(url) == url
 
 
-class TestBuildTrackMetadata:
-    def test_returns_didl_xml(self):
-        from apple_music import build_track_metadata
-        track = {
-            "name": "Women",
-            "artist": "Def Leppard",
-            "album": "Hysteria",
-            "artwork_url": "https://example.com/art.jpg",
-        }
-        xml = build_track_metadata(track)
-        assert "DIDL-Lite" in xml
-        assert "<dc:title>Women</dc:title>" in xml
-        assert "<dc:creator>Def Leppard</dc:creator>" in xml
-        assert "<upnp:album>Hysteria</upnp:album>" in xml
-        assert "<upnp:albumArtURI>https://example.com/art.jpg</upnp:albumArtURI>" in xml
-
 
 class TestSearchAlbums:
     def test_returns_album_list(self):
@@ -117,6 +101,14 @@ class TestGetAlbumTracks:
         with patch("urllib.request.urlopen", return_value=mock_resp):
             tracks = get_album_tracks(1440903625)
         assert "600x600bb" in tracks[0]["artwork_url"]
+
+    def test_skips_results_missing_wrapper_type(self):
+        from apple_music import get_album_tracks
+        response = {"resultCount": 1, "results": [{"trackId": 1, "trackName": "X"}]}
+        mock_resp = make_mock_response(response)
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            tracks = get_album_tracks(1440903625)
+        assert tracks == []
 
 
 class TestGetTrack:
