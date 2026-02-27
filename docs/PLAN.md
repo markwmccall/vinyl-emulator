@@ -281,7 +281,7 @@ Key points:
 
 **Pi Setup:**
 1. Download Raspberry Pi Imager on Mac
-2. Flash new SD: **Raspberry Pi OS Lite (64-bit)**
+2. Flash new SD: **Raspberry Pi OS Lite (32-bit)** — use 32-bit on the Zero 2 W (512MB RAM, 64-bit OS adds overhead without benefit)
 3. In Imager settings: username + password, hostname `vinyl-pi`, SSH, WiFi credentials
 4. `ssh YOUR_USERNAME@vinyl-pi.local`
 5. `sudo apt update && sudo apt upgrade -y`

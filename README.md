@@ -36,7 +36,7 @@ A Flask web app running on the same Pi lets you:
 
 ## Raspberry Pi setup
 
-After assembling the hardware and flashing Raspberry Pi OS Lite (headless, with SSH and WiFi configured in Raspberry Pi Imager):
+After assembling the hardware and flashing **Raspberry Pi OS Lite (32-bit)** (headless, with SSH and WiFi configured in Raspberry Pi Imager):
 
 ```bash
 git clone https://github.com/markwmccall/vinyl-emulator.git
