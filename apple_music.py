@@ -38,7 +38,7 @@ def search_albums(query):
             "id": r["collectionId"],
             "name": r["collectionName"],
             "artist": r["artistName"],
-            "artwork_url": r.get("artworkUrl100", ""),
+            "artwork_url": upgrade_artwork_url(r.get("artworkUrl100", "")),
         }
         for r in data["results"]
     ]

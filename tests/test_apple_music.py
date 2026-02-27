@@ -67,6 +67,13 @@ class TestSearchAlbums:
         assert results[0]["artist"] == "Def Leppard"
         assert "artwork_url" in results[0]
 
+    def test_artwork_url_upgraded(self):
+        from apple_music import search_albums
+        mock_resp = make_mock_response(SAMPLE_SEARCH_RESPONSE)
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            results = search_albums("Hysteria Def Leppard")
+        assert "600x600bb" in results[0]["artwork_url"]
+
     def test_empty_results(self):
         from apple_music import search_albums
         mock_resp = make_mock_response({"resultCount": 0, "results": []})
