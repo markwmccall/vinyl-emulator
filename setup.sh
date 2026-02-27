@@ -30,8 +30,9 @@ echo "      SPI enabled (takes effect after reboot)"
 
 # --- Python dependencies ---
 echo "[3/5] Installing Python dependencies..."
-pip3 install -r "$REPO_DIR/requirements.txt"
-pip3 install adafruit-circuitpython-pn532 RPi.GPIO spidev
+# --break-system-packages required on Raspberry Pi OS Bookworm (PEP 668)
+pip3 install --break-system-packages -r "$REPO_DIR/requirements.txt"
+pip3 install --break-system-packages adafruit-circuitpython-pn532 RPi.GPIO spidev
 
 # --- Config file ---
 echo "[4/5] Setting up config..."
