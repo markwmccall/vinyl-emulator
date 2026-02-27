@@ -93,6 +93,11 @@ class TestAlbum:
         assert b"Hysteria" in resp.data
         assert b"Def Leppard" in resp.data
 
+    def test_unknown_album_returns_404(self, client):
+        with patch("app.apple_music.get_album_tracks", return_value=[]):
+            resp = client.get("/album/9999999")
+        assert resp.status_code == 404
+
 
 class TestTrack:
     def test_returns_200(self, client):
@@ -115,6 +120,11 @@ class TestTrack:
         with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
             resp = client.get("/track/1440904001")
         assert b"apple:track:1440904001" in resp.data
+
+    def test_unknown_track_returns_404(self, client):
+        with patch("app.apple_music.get_track", return_value=[]):
+            resp = client.get("/track/9999999")
+        assert resp.status_code == 404
 
 
 class TestWriteTag:

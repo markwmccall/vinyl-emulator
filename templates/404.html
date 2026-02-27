@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %} — Not Found{% endblock %}
+
+{% block content %}
+<div class="not-found">
+  <h1>Not Found</h1>
+  <p>That album or track doesn't exist in Apple Music, or the ID is wrong.</p>
+  <a href="{{ url_for('index') }}" class="play-btn">&#8592; Back to Search</a>
+</div>
+{% endblock %}

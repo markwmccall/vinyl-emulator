@@ -261,6 +261,12 @@ a.track-name:hover { color: #fff; text-decoration: underline; }
 .tab-btn:hover { background: #222; color: #eee; }
 .tab-btn.active { background: #333; color: #fff; border-color: #666; }
 
+/* 404 page */
+.not-found { text-align: center; padding: 4rem 1rem; }
+.not-found h1 { font-size: 2rem; margin-bottom: 0.75rem; }
+.not-found p { color: #888; margin-bottom: 1.75rem; }
+.not-found .play-btn { display: inline-block; text-decoration: none; }
+
 /* Verify page */
 .verify-page h1 { font-size: 1.6rem; margin-bottom: 0.75rem; }
 .verify-instructions { color: #888; margin-bottom: 1.25rem; }

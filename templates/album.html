@@ -1,8 +1,7 @@
 {% extends "base.html" %}
-{% block title %}{% if tracks %} — {{ tracks[0].album }}{% endif %}{% endblock %}
+{% block title %} — {{ tracks[0].album }}{% endblock %}
 
 {% block content %}
-{% if tracks %}
 <div class="album-page">
   <div class="album-header">
     <img src="{{ tracks[0].artwork_url }}" alt="{{ tracks[0].album }}" class="album-art">
@@ -36,7 +35,7 @@
 <script>
   const status = document.getElementById('action-status');
 
-  async function postAction(url, albumId, btn, busyText, doneText, successMsg) {
+  async function postAction(url, body, btn, busyText, doneText, successMsg) {
     btn.disabled = true;
     btn.textContent = busyText;
     status.textContent = '';
@@ -45,9 +44,16 @@
       const resp = await fetch(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({album_id: albumId}),
+        body: JSON.stringify(body),
       });
       const data = await resp.json();
+      if (!resp.ok) {
+        btn.textContent = doneText;
+        btn.disabled = false;
+        status.textContent = data.error || 'Something went wrong.';
+        status.className = 'write-status error';
+        return;
+      }
       btn.textContent = doneText;
       btn.disabled = false;
       status.textContent = successMsg(data);
@@ -61,16 +67,13 @@
   }
 
   document.getElementById('play-btn').addEventListener('click', function() {
-    postAction('/play', this.dataset.albumId, this, 'Playing…', '▶ Play Now',
+    postAction('/play', {album_id: this.dataset.albumId}, this, 'Playing…', '▶ Play Now',
       () => '✓ Playing on Sonos');
   });
 
   document.getElementById('write-btn').addEventListener('click', function() {
-    postAction('/write-tag', this.dataset.albumId, this, 'Writing…', 'Write to Tag',
+    postAction('/write-tag', {album_id: this.dataset.albumId}, this, 'Writing…', 'Write to Tag',
       data => '✓ Written: ' + data.written);
   });
 </script>
-{% else %}
-<p>Album not found.</p>
-{% endif %}
 {% endblock %}

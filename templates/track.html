@@ -1,15 +1,14 @@
 {% extends "base.html" %}
-{% block title %}{% if track %} — {{ track.name }}{% endif %}{% endblock %}
+{% block title %} — {{ track.name }}{% endblock %}
 
 {% block content %}
-{% if track %}
 <div class="album-page">
   <div class="album-header">
     <img src="{{ track.artwork_url }}" alt="{{ track.album }}" class="album-art">
     <div class="album-meta">
       <h1>{{ track.name }}</h1>
       <p class="artist">{{ track.artist }}</p>
-      <p class="artist" style="font-size:0.95rem; color:#888; margin-top:-0.75rem">{{ track.album }}</p>
+      <p class="track-subtitle">{{ track.album }}</p>
       <p class="tag-string">Tag: <code>apple:track:{{ track_id }}</code></p>
 
       <div class="action-btns">
@@ -40,6 +39,13 @@
         body: JSON.stringify(body),
       });
       const data = await resp.json();
+      if (!resp.ok) {
+        btn.textContent = doneText;
+        btn.disabled = false;
+        status.textContent = data.error || 'Something went wrong.';
+        status.className = 'write-status error';
+        return;
+      }
       btn.textContent = doneText;
       btn.disabled = false;
       status.textContent = successMsg(data);
@@ -62,7 +68,4 @@
       data => '✓ Written: ' + data.written);
   });
 </script>
-{% else %}
-<p>Track not found.</p>
-{% endif %}
 {% endblock %}

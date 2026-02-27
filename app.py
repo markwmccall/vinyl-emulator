@@ -3,7 +3,7 @@ import json
 import os
 import subprocess
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request
 
 import apple_music
 from nfc_interface import MockNFC, PN532NFC, parse_tag_data
@@ -44,14 +44,22 @@ def search():
 @app.route("/album/<int:album_id>")
 def album(album_id):
     tracks = apple_music.get_album_tracks(album_id)
+    if not tracks:
+        abort(404)
     return render_template("album.html", album_id=album_id, tracks=tracks)
 
 
 @app.route("/track/<int:track_id>")
 def track(track_id):
     tracks = apple_music.get_track(track_id)
-    t = tracks[0] if tracks else None
-    return render_template("track.html", track_id=track_id, track=t)
+    if not tracks:
+        abort(404)
+    return render_template("track.html", track_id=track_id, track=tracks[0])
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template("404.html"), 404
 
 
 @app.route("/write-tag", methods=["POST"])
