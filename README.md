@@ -1,5 +1,7 @@
 # Vinyl Emulator
 
+[![Tests](https://github.com/markwmccall/vinyl-emulator/actions/workflows/tests.yml/badge.svg)](https://github.com/markwmccall/vinyl-emulator/actions/workflows/tests.yml)
+
 Tap an NFC card → an album or song plays on your Sonos speaker.
 
 Inspired by [Mark Hank's Sonos/Spotify Vinyl Emulator](https://www.hackster.io/mark-hank/sonos-spotify-vinyl-emulator-3be63d), this project adapts the concept for **Apple Music** and adds a full web UI for searching, writing, and verifying tags — no terminal required after initial setup.
@@ -147,7 +149,7 @@ etc/                systemd service file templates
 config.json         Runtime config (speaker IP, sn, NFC mode) — not committed
 templates/          Jinja2 HTML templates
 static/             CSS
-tests/              pytest test suite (81 tests)
+tests/              pytest test suite (92 tests)
 docs/PLAN.md        Architecture notes and Sonos SMAPI findings
 docs/TODO.md        Backlog
 ```
@@ -160,7 +162,7 @@ docs/TODO.md        Backlog
 python -m pytest tests/ -v
 ```
 
-81 tests covering all modules.
+92 tests covering all modules.
 
 ---
 
