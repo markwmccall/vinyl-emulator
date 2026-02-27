@@ -9,10 +9,10 @@
 <body>
   <header>
     <nav>
-      <a href="/" class="logo">&#9679; Vinyl Emulator</a>
-      <div style="display:flex;gap:1.25rem">
-        <a href="/verify">Verify Tag</a>
-        <a href="/settings">Settings</a>
+      <a href="{{ url_for('index') }}" class="logo">&#9679; Vinyl Emulator</a>
+      <div class="nav-links">
+        <a href="{{ url_for('verify') }}">Verify Tag</a>
+        <a href="{{ url_for('settings') }}">Settings</a>
       </div>
     </nav>
   </header>

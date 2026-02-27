@@ -11,11 +11,10 @@ def upgrade_artwork_url(url):
     return url.replace("100x100bb", "600x600bb")
 
 
-
 def search_albums(query):
     encoded = urllib.parse.quote(query)
     url = f"https://itunes.apple.com/search?term={encoded}&entity=album"
-    with urllib.request.urlopen(url) as response:
+    with urllib.request.urlopen(url, timeout=10) as response:
         data = json.loads(response.read())
     return [
         {
@@ -31,7 +30,7 @@ def search_albums(query):
 def search_songs(query):
     encoded = urllib.parse.quote(query)
     url = f"https://itunes.apple.com/search?term={encoded}&entity=song"
-    with urllib.request.urlopen(url) as response:
+    with urllib.request.urlopen(url, timeout=10) as response:
         data = json.loads(response.read())
     return [
         {
@@ -48,7 +47,7 @@ def search_songs(query):
 
 def get_track(track_id):
     url = f"https://itunes.apple.com/lookup?id={track_id}"
-    with urllib.request.urlopen(url) as response:
+    with urllib.request.urlopen(url, timeout=10) as response:
         data = json.loads(response.read())
     tracks = [r for r in data["results"] if r.get("wrapperType") == "track"]
     if not tracks:
@@ -68,7 +67,7 @@ def get_track(track_id):
 
 def get_album_tracks(album_id):
     url = f"https://itunes.apple.com/lookup?id={album_id}&entity=song"
-    with urllib.request.urlopen(url) as response:
+    with urllib.request.urlopen(url, timeout=10) as response:
         data = json.loads(response.read())
     tracks = [r for r in data["results"] if r.get("wrapperType") == "track"]
     tracks.sort(key=lambda t: t["trackNumber"])

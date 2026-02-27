@@ -70,6 +70,8 @@ def _build_track_didl(track, udn):
 
 
 def play_album(speaker_ip, track_dicts, sn):
+    if not track_dicts:
+        return
     speaker = soco.SoCo(speaker_ip)
     udn = _lookup_apple_music_udn(speaker, sn)
     speaker.clear_queue()

@@ -38,7 +38,6 @@ class TestUpgradeArtworkUrl:
         assert upgrade_artwork_url(url) == url
 
 
-
 class TestSearchAlbums:
     def test_returns_album_list(self):
         from apple_music import search_albums

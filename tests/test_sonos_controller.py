@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch, MagicMock
 from apple_music import build_track_uri
 
@@ -72,6 +71,12 @@ class TestPlayAlbum:
         with patch("sonos_controller._lookup_apple_music_udn", return_value=SAMPLE_UDN):
             play_album("10.0.0.12", SAMPLE_TRACKS, "3")
         mock_speaker.play_from_queue.assert_called_once_with(0)
+
+    def test_does_nothing_for_empty_track_list(self, mock_speaker):
+        from sonos_controller import play_album
+        play_album("10.0.0.12", [], "3")
+        mock_speaker.clear_queue.assert_not_called()
+        mock_speaker.play_from_queue.assert_not_called()
 
 
 class TestGetSpeakers:
