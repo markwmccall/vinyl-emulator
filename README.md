@@ -78,7 +78,7 @@ python3 app.py                        # binds to 127.0.0.1:5000
 | Key | Description |
 |-----|-------------|
 | `speaker_ip` | IP address of your Sonos speaker. Use the Discover button in Settings to find it. |
-| `sn` | Apple Music service number assigned by Sonos — identifies which Apple Music account is linked. Use the **Detect** button in Settings to find it automatically (requires at least one Apple Music favorite saved in the Sonos app). If detection finds nothing, try small numbers like `3` or `5`. |
+| `sn` | Apple Music service number assigned by Sonos — identifies which Apple Music account is linked. Use the **Detect** button in Settings to find it automatically (requires at least one Apple Music favorite saved in the Sonos app). If detection finds nothing, try small numbers like `3` or `5`. To confirm the value is correct, save and try playing an album or track. |
 | `nfc_mode` | `mock` for development (reads tag strings from stdin), `pn532` for Raspberry Pi with the Waveshare HAT. |
 
 ---

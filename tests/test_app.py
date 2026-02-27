@@ -354,6 +354,33 @@ class TestPlayerControl:
         assert data["action"] == "stop"
 
 
+class TestDetectSn:
+    def test_returns_detected_sn(self, client, temp_config):
+        with patch("app.detect_apple_music_sn", return_value="3"):
+            resp = client.get("/detect-sn")
+        assert resp.status_code == 200
+        assert resp.get_json()["sn"] == "3"
+
+    def test_returns_404_when_not_found(self, client, temp_config):
+        with patch("app.detect_apple_music_sn", return_value=None):
+            resp = client.get("/detect-sn")
+        assert resp.status_code == 404
+
+    def test_accepts_speaker_ip_param(self, client):
+        with patch("app.detect_apple_music_sn", return_value="5"):
+            resp = client.get("/detect-sn?speaker_ip=10.0.0.12")
+        assert resp.status_code == 200
+        assert resp.get_json()["sn"] == "5"
+
+    def test_returns_400_when_no_speaker(self, client, tmp_path, monkeypatch):
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({"sn": "3", "speaker_ip": "", "nfc_mode": "mock"}))
+        import app
+        monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        resp = client.get("/detect-sn")
+        assert resp.status_code == 400
+
+
 class TestHealth:
     def test_returns_200(self, client):
         resp = client.get("/health")
