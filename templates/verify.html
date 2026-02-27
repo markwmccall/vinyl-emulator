@@ -48,11 +48,11 @@
   const albumResult = document.getElementById('album-result');
   const errorResult = document.getElementById('error-result');
   const tagInput = document.getElementById('tag-input');
-  const mockMode = {{ 'true' if nfc_mode == 'mock' else 'false' }};
+  const mockMode = {{ nfc_mode | tojson }};
 
   async function doLookup() {
     readBtn.disabled = true;
-    readBtn.textContent = mockMode ? 'Looking up…' : 'Waiting for card…';
+    readBtn.textContent = mockMode === 'mock' ? 'Looking up…' : 'Waiting for card…';
     readStatus.textContent = '';
     readStatus.className = 'write-status';
     result.style.display = 'none';
@@ -60,7 +60,7 @@
     errorResult.style.display = 'none';
 
     let url = '/read-tag';
-    if (mockMode && tagInput) {
+    if (mockMode === 'mock' && tagInput) {
       const tag = tagInput.value.trim();
       if (!tag) {
         readStatus.textContent = 'Enter a tag string first.';
@@ -98,7 +98,7 @@
       readStatus.className = 'write-status error';
     }
 
-    readBtn.textContent = mockMode ? 'Look Up' : 'Tap to Read Tag';
+    readBtn.textContent = mockMode === 'mock' ? 'Look Up' : 'Tap to Read Tag';
     readBtn.disabled = false;
   }
 
