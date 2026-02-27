@@ -61,7 +61,7 @@ After rebooting, open `http://vinyl-pi.local:5000` in your browser, go to **Sett
 
 ---
 
-## Mac / development setup
+## Development setup
 
 ```bash
 pip3 install -r requirements-dev.txt
@@ -73,13 +73,13 @@ python3 app.py                        # binds to 127.0.0.1:5000
 
 ## Configuration
 
-`config.json` is created by `setup.sh` on the Pi, or manually from `config.json.example` on Mac. It is never committed to git.
+`config.json` is created by `setup.sh` on the Pi, or manually from `config.json.example` for local development. It is never committed to git.
 
 | Key | Description |
 |-----|-------------|
 | `speaker_ip` | IP address of your Sonos speaker. Use the Discover button in Settings to find it. |
 | `sn` | Apple Music account serial number used by Sonos. Usually `3` or `5`. Find it in Settings → Discover, or check Sonos favorites that include Apple Music content. |
-| `nfc_mode` | `mock` for Mac/dev (reads from stdin), `pn532` for Raspberry Pi with the Waveshare HAT. |
+| `nfc_mode` | `mock` for development (reads tag strings from stdin), `pn532` for Raspberry Pi with the Waveshare HAT. |
 
 ---
 
@@ -87,8 +87,8 @@ python3 app.py                        # binds to 127.0.0.1:5000
 
 **Web UI:**
 ```bash
-python3 app.py                        # Mac — binds to 127.0.0.1:5000
-python3 app.py --host 0.0.0.0         # Pi — accessible from your phone
+python3 app.py                        # binds to 127.0.0.1:5000
+python3 app.py --host 0.0.0.0         # accessible from other devices on the network
 ```
 
 Open `http://localhost:5000` (or `http://vinyl-pi.local:5000` from your phone).
