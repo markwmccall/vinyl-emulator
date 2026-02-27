@@ -34,52 +34,73 @@ A Flask web app running on the same Pi lets you:
 
 ---
 
-## Software requirements
+## Raspberry Pi setup
 
-- Python 3.9+
-- `flask`, `soco` (Sonos control), `pytest`, `pytest-mock`
+After assembling the hardware and flashing Raspberry Pi OS Lite (headless, with SSH and WiFi configured in Raspberry Pi Imager):
 
 ```bash
-pip install flask soco pytest pytest-mock
+git clone https://github.com/markwmccall/vinyl-emulator.git
+cd vinyl-emulator
+chmod +x setup.sh && ./setup.sh
+```
+
+`setup.sh` does everything in one shot:
+- Installs system packages (`python3-pip`, `python3-dev`)
+- Enables the SPI interface (required for the PN532 HAT)
+- Installs Python dependencies including the Adafruit PN532 library
+- Creates `config.json` with `nfc_mode=pn532`
+- Installs and enables the `vinyl-player` and `vinyl-web` systemd services
+
+It will prompt you to reboot at the end — SPI requires a reboot to take effect.
+
+After rebooting, open `http://vinyl-pi.local:5000` in your browser, go to **Settings**, and enter your Sonos speaker IP and `sn` value. That's the only manual configuration step.
+
+---
+
+## Mac / development setup
+
+```bash
+pip3 install flask soco pytest pytest-mock
+cp config.json.example config.json   # set nfc_mode: "mock"
+python3 app.py                        # binds to 127.0.0.1:5000
 ```
 
 ---
 
 ## Configuration
 
-Copy `config.json.example` to `config.json` and fill in:
-
-```json
-{
-  "speaker_ip": "10.0.0.12",
-  "sn": "3",
-  "nfc_mode": "mock"
-}
-```
+`config.json` is created by `setup.sh` on the Pi, or manually from `config.json.example` on Mac. It is never committed to git.
 
 | Key | Description |
 |-----|-------------|
 | `speaker_ip` | IP address of your Sonos speaker. Use the Discover button in Settings to find it. |
-| `sn` | Apple Music account serial number used by Sonos. Usually `3` or `5`. Find it by checking Sonos favorites that include Apple Music content. |
+| `sn` | Apple Music account serial number used by Sonos. Usually `3` or `5`. Find it in Settings → Discover, or check Sonos favorites that include Apple Music content. |
 | `nfc_mode` | `mock` for Mac/dev (reads from stdin), `pn532` for Raspberry Pi with the Waveshare HAT. |
 
 ---
 
 ## Running
 
-**Web UI (recommended):**
+**Web UI:**
 ```bash
-python app.py                        # Mac — binds to 127.0.0.1:5000
-python app.py --host 0.0.0.0         # Pi — accessible from your phone
+python3 app.py                        # Mac — binds to 127.0.0.1:5000
+python3 app.py --host 0.0.0.0         # Pi — accessible from your phone
 ```
 
 Open `http://localhost:5000` (or `http://vinyl-pi.local:5000` from your phone).
 
 **Player daemon (NFC loop):**
 ```bash
-python player.py                     # waits for card taps, plays on Sonos
-python player.py --simulate apple:1440903625   # play once without a card
-python player.py --read              # read one tag, print its content, exit
+python3 player.py                            # waits for card taps, plays on Sonos
+python3 player.py --simulate apple:1440903625  # play once without a card
+python3 player.py --read                     # read one tag, print its content, exit
+```
+
+On the Pi with systemd, the player and web UI start automatically on boot. To manage them manually:
+```bash
+sudo systemctl stop vinyl-player     # stop before writing new tags
+sudo systemctl start vinyl-player    # restart after writing tags
+sudo systemctl status vinyl-player   # check if running
 ```
 
 ---
@@ -120,12 +141,15 @@ app.py              Flask web app (search, play, write-tag, verify)
 player.py           NFC loop daemon + --simulate / --read flags
 apple_music.py      iTunes Search API: search albums/songs, fetch tracks
 sonos_controller.py Sonos SOAP/UPnP: queue and play tracks via SoCo
-nfc_interface.py    NFC abstraction: MockNFC (stdin), PN532NFC (Phase 5)
-config.json         Runtime config (speaker IP, sn, NFC mode)
+nfc_interface.py    NFC abstraction: MockNFC (stdin), PN532NFC (Pi)
+setup.sh            One-shot Pi setup script
+etc/                systemd service file templates
+config.json         Runtime config (speaker IP, sn, NFC mode) — not committed
 templates/          Jinja2 HTML templates
 static/             CSS
-tests/              pytest test suite (80 tests)
+tests/              pytest test suite (81 tests)
 docs/PLAN.md        Architecture notes and Sonos SMAPI findings
+docs/TODO.md        Backlog
 ```
 
 ---
@@ -136,7 +160,7 @@ docs/PLAN.md        Architecture notes and Sonos SMAPI findings
 python -m pytest tests/ -v
 ```
 
-80 tests covering all modules.
+81 tests covering all modules.
 
 ---
 
