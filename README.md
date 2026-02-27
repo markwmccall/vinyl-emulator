@@ -2,6 +2,8 @@
 
 [![Tests](https://github.com/markwmccall/vinyl-emulator/actions/workflows/tests.yml/badge.svg)](https://github.com/markwmccall/vinyl-emulator/actions/workflows/tests.yml)
 
+> **Work in progress.** The software is functional and tested, but the NFC hardware integration (`PN532NFC`) is not yet complete — the Pi can run the web UI and play music, but physical card taps do not work yet. This will be resolved once the Waveshare PN532 NFC HAT arrives. Use `--simulate` mode in the meantime.
+
 Tap an NFC card → an album or song plays on your Sonos speaker.
 
 Inspired by [Mark Hank's Sonos/Spotify Vinyl Emulator](https://www.hackster.io/mark-hank/sonos-spotify-vinyl-emulator-3be63d), this project adapts the concept for **Apple Music** and adds a full web UI for searching, writing, and verifying tags — no terminal required after initial setup.
@@ -149,7 +151,7 @@ etc/                systemd service file templates
 config.json         Runtime config (speaker IP, sn, NFC mode) — not committed
 templates/          Jinja2 HTML templates
 static/             CSS
-tests/              pytest test suite (92 tests)
+tests/              pytest test suite
 docs/PLAN.md        Architecture notes and Sonos SMAPI findings
 docs/TODO.md        Backlog
 ```
@@ -161,8 +163,6 @@ docs/TODO.md        Backlog
 ```bash
 python -m pytest tests/ -v
 ```
-
-92 tests covering all modules.
 
 ---
 
