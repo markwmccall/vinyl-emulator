@@ -289,11 +289,11 @@ class TestReadTag:
 
 
 class TestVerify:
-    def test_returns_200(self, client):
+    def test_returns_200(self, client, temp_config):
         resp = client.get("/verify")
         assert resp.status_code == 200
 
-    def test_renders_read_tag_button(self, client):
+    def test_renders_read_tag_button(self, client, temp_config):
         resp = client.get("/verify")
         assert b"read" in resp.data.lower() or b"tap" in resp.data.lower()
 
