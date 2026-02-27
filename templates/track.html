@@ -19,6 +19,10 @@
           Write to Tag
         </button>
       </div>
+      <div id="transport-btns" class="action-btns transport-btns">
+        <button id="pause-btn" class="pause-btn">⏸ Pause</button>
+        <button id="stop-btn" class="stop-btn">⏹ Stop</button>
+      </div>
       <p id="action-status" class="write-status"></p>
     </div>
   </div>
@@ -58,9 +62,21 @@
     }
   }
 
+  const transportBtns = document.getElementById('transport-btns');
+
   document.getElementById('play-btn').addEventListener('click', function() {
     postAction('/play', {track_id: this.dataset.trackId}, this, 'Playing…', '▶ Play Now',
-      () => '✓ Playing on Sonos');
+      () => { transportBtns.style.display = 'flex'; return '✓ Playing on Sonos'; });
+  });
+
+  document.getElementById('pause-btn').addEventListener('click', function() {
+    postAction('/transport', {action: 'pause'}, this, 'Pausing…', '⏸ Pause',
+      () => 'Paused');
+  });
+
+  document.getElementById('stop-btn').addEventListener('click', function() {
+    postAction('/transport', {action: 'stop'}, this, 'Stopping…', '⏹ Stop',
+      () => { transportBtns.style.display = 'none'; return 'Stopped'; });
   });
 
   document.getElementById('write-btn').addEventListener('click', function() {

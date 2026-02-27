@@ -79,6 +79,23 @@ class TestPlayAlbum:
         mock_speaker.play_from_queue.assert_not_called()
 
 
+class TestTransport:
+    def test_pause_calls_speaker_pause(self, mock_speaker):
+        from sonos_controller import pause
+        pause("10.0.0.12")
+        mock_speaker.pause.assert_called_once()
+
+    def test_resume_calls_speaker_play(self, mock_speaker):
+        from sonos_controller import resume
+        resume("10.0.0.12")
+        mock_speaker.play.assert_called_once()
+
+    def test_stop_calls_speaker_stop(self, mock_speaker):
+        from sonos_controller import stop
+        stop("10.0.0.12")
+        mock_speaker.stop.assert_called_once()
+
+
 class TestGetSpeakers:
     def test_returns_speaker_list(self):
         from sonos_controller import get_speakers

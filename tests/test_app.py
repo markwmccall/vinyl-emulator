@@ -352,3 +352,68 @@ class TestPlayerControl:
         data = resp.get_json()
         assert data["status"] == "ok"
         assert data["action"] == "stop"
+
+
+class TestHealth:
+    def test_returns_200(self, client):
+        resp = client.get("/health")
+        assert resp.status_code == 200
+
+    def test_returns_ok_status(self, client):
+        resp = client.get("/health")
+        assert resp.get_json()["status"] == "ok"
+
+
+class TestTransport:
+    def test_pause_action(self, client, temp_config):
+        with patch("app.pause") as mock_pause:
+            resp = client.post("/transport", json={"action": "pause"})
+        assert resp.status_code == 200
+        mock_pause.assert_called_once_with("10.0.0.12")
+
+    def test_resume_action(self, client, temp_config):
+        with patch("app.resume") as mock_resume:
+            resp = client.post("/transport", json={"action": "resume"})
+        assert resp.status_code == 200
+        mock_resume.assert_called_once_with("10.0.0.12")
+
+    def test_stop_action(self, client, temp_config):
+        with patch("app.stop") as mock_stop:
+            resp = client.post("/transport", json={"action": "stop"})
+        assert resp.status_code == 200
+        mock_stop.assert_called_once_with("10.0.0.12")
+
+    def test_invalid_action_returns_400(self, client):
+        resp = client.post("/transport", json={"action": "rewind"})
+        assert resp.status_code == 400
+
+    def test_returns_ok_and_action(self, client, temp_config):
+        with patch("app.pause"):
+            resp = client.post("/transport", json={"action": "pause"})
+        data = resp.get_json()
+        assert data["status"] == "ok"
+        assert data["action"] == "pause"
+
+
+class TestPlayTag:
+    def test_plays_album_tag(self, client, temp_config):
+        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+             patch("app.play_album") as mock_play:
+            resp = client.post("/play/tag", json={"tag": "apple:1440903625"})
+        assert resp.status_code == 200
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3")
+
+    def test_plays_track_tag(self, client, temp_config):
+        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK), \
+             patch("app.play_album") as mock_play:
+            resp = client.post("/play/tag", json={"tag": "apple:track:1440904001"})
+        assert resp.status_code == 200
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_SINGLE_TRACK, "3")
+
+    def test_invalid_tag_returns_400(self, client, temp_config):
+        resp = client.post("/play/tag", json={"tag": "notvalid"})
+        assert resp.status_code == 400
+
+    def test_missing_tag_returns_400(self, client):
+        resp = client.post("/play/tag", json={})
+        assert resp.status_code == 400

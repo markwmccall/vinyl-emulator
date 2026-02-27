@@ -69,6 +69,18 @@ def _build_track_didl(track, udn):
     )
 
 
+def pause(speaker_ip):
+    soco.SoCo(speaker_ip).pause()
+
+
+def resume(speaker_ip):
+    soco.SoCo(speaker_ip).play()
+
+
+def stop(speaker_ip):
+    soco.SoCo(speaker_ip).stop()
+
+
 def play_album(speaker_ip, track_dicts, sn):
     if not track_dicts:
         return

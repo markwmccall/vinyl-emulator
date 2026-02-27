@@ -7,7 +7,7 @@ from flask import Flask, abort, jsonify, render_template, request
 
 import apple_music
 from nfc_interface import MockNFC, PN532NFC, parse_tag_data
-from sonos_controller import get_speakers, play_album
+from sonos_controller import get_speakers, pause, play_album, resume, stop
 
 app = Flask(__name__)
 
@@ -153,6 +153,46 @@ def player_control():
         return jsonify({"error": "invalid action"}), 400
     subprocess.run(["sudo", "systemctl", action, "vinyl-player"], check=False)
     return jsonify({"status": "ok", "action": action})
+
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
+@app.route("/transport", methods=["POST"])
+def transport():
+    data = request.get_json()
+    action = data.get("action") if data else None
+    if action not in ("pause", "resume", "stop"):
+        return jsonify({"error": "invalid action"}), 400
+    config = _load_config()
+    if action == "pause":
+        pause(config["speaker_ip"])
+    elif action == "resume":
+        resume(config["speaker_ip"])
+    else:
+        stop(config["speaker_ip"])
+    return jsonify({"status": "ok", "action": action})
+
+
+@app.route("/play/tag", methods=["POST"])
+def play_tag():
+    data = request.get_json()
+    tag_string = data.get("tag") if data else None
+    if not tag_string:
+        return jsonify({"error": "tag required"}), 400
+    try:
+        tag = parse_tag_data(tag_string)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    config = _load_config()
+    if tag["type"] == "track":
+        tracks = apple_music.get_track(tag["id"])
+    else:
+        tracks = apple_music.get_album_tracks(tag["id"])
+    play_album(config["speaker_ip"], tracks, config["sn"])
+    return jsonify({"status": "ok"})
 
 
 @app.route("/verify")
