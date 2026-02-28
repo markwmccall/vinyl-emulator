@@ -93,6 +93,8 @@ python3 app.py --host 0.0.0.0         # accessible from other devices on the net
 
 Open `http://localhost:5000` (or `http://vinyl-pi.local:5000` from your phone).
 
+> **Security note:** The web UI has no authentication. It is intended for use on a trusted home network only — do not expose port 5000 to the internet.
+
 **Player daemon (NFC loop):**
 ```bash
 python3 player.py                            # waits for card taps, plays on Sonos
@@ -117,6 +119,7 @@ sudo systemctl status vinyl-player   # check if running
 | Album | `/album/{id}` | Track listing, Play Now, Write to Tag |
 | Song | `/track/{id}` | Single track, Play Now, Write to Tag |
 | Verify Tag | `/verify` | Read a card and show what album/song it points to |
+| Collection | `/collection` | Browse, sort, and delete written tags |
 | Settings | `/settings` | Speaker IP, account number, NFC mode |
 
 ---
