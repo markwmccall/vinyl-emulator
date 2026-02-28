@@ -5,6 +5,7 @@
 <div class="search-page">
   <div class="search-bar">
     <input type="text" id="search-input" placeholder="Artist, album, or song…" autofocus>
+    <button id="clear-btn" class="clear-btn" style="display:none" aria-label="Clear">&times;</button>
   </div>
 
   <div class="search-tabs">
@@ -17,7 +18,15 @@
 
 <script>
   const input = document.getElementById('search-input');
+  const clearBtn = document.getElementById('clear-btn');
   const results = document.getElementById('results');
+
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    results.innerHTML = '';
+    clearBtn.style.display = 'none';
+    input.focus();
+  });
   const tabBtns = document.querySelectorAll('.tab-btn');
   let timer;
   let activeType = 'album';
@@ -35,12 +44,13 @@
   input.addEventListener('input', () => {
     clearTimeout(timer);
     const q = input.value.trim();
+    clearBtn.style.display = q ? 'flex' : 'none';
     if (!q) { results.innerHTML = ''; return; }
     timer = setTimeout(() => fetchResults(q), 300);
   });
 
   // Re-run search if the browser restored a value into the input (back navigation)
-  if (input.value.trim()) fetchResults(input.value.trim());
+  if (input.value.trim()) { clearBtn.style.display = 'flex'; fetchResults(input.value.trim()); }
 
   async function fetchResults(q) {
     results.innerHTML = '<p class="loading">Searching…</p>';
