@@ -13,11 +13,12 @@
     1. `start_new_session=True` in `Popen` (prevents signal inheritance from Flask)
     2. Add `KillMode=process` to `etc/vinyl-web.service` (tells systemd to only kill the main process on restart, leaving child processes alive)
   - Update `setup.sh` to include `KillMode=process` in the installed service file
-  - Add `updater.py` — standalone script that runs the full update sequence and writes progress to `update.log`
+  - Add `updater.py` — standalone script that runs the full update sequence and writes progress to `update.log`. At startup, write a PID lock file (`.update-lock`) and abort if one already exists — prevents two concurrent update runs if the button is clicked twice. Always remove the lock file on exit (success or failure).
+  - `update.log` state protocol: `updater.py` writes explicit marker lines `STATE:running`, `STATE:success`, `STATE:failed`, `STATE:rolled_back` so `/update/status` can parse state reliably without fragile log string matching. All other lines are human-readable progress/timestamps.
   - Add `/update/status` GET route — reads `update.log` from disk, returns `{"state": "idle"|"running"|"success"|"failed"|"rolled_back", "log": "...last 20 lines..."}`. Reading from a file (not thread state) means this works correctly even after vinyl-web has restarted.
   - Settings page: show version in footer; poll `/update/status` every 2s while update is running; show result when done
   - Only show update controls in `pn532` mode (on Pi); mock mode shows version only
-  - Add `.update-rollback` and `update.log` to `.gitignore`
+  - Add `.update-rollback`, `.update-lock`, and `update.log` to `.gitignore`
 
 - [ ] **Update rollback / safety net** — if the update causes `vinyl-web` to fail, the Pi becomes unreachable (bricked) without SSH. Mitigate with:
   - Before updating: record current commit hash (`git rev-parse HEAD`) and write to `.update-rollback`
@@ -25,7 +26,7 @@
     1. `git pull` → if fails, abort (nothing changed)
     2. `pip3 install --break-system-packages -r requirements.txt` → if fails, `git reset --hard <prev-commit>`, abort
     3. `sudo systemctl restart vinyl-web vinyl-player`
-    4. Health check — poll `GET http://localhost:5000/health` (from within the same thread) for up to 15s after restart
+    4. Health check — poll `GET http://localhost:5000/health` for up to **30s** after restart (Pi Zero 2 W is slow; Python startup takes several seconds; 15s is not enough)
     5. If health check fails → `git reset --hard <prev-commit>`, re-run pip install, restart services again
   - `/update/rollback` POST route — manually revert to commit saved in `.update-rollback` (escape hatch if auto-rollback also fails to reach the health check)
   - All steps append to `update.log` with timestamps; `/update/status` exposes last 20 lines
