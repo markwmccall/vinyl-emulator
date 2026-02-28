@@ -20,7 +20,8 @@ nav {
 nav a { color: #eee; text-decoration: none; }
 nav .logo { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em; }
 nav a:hover { color: #fff; }
-.nav-links { display: flex; gap: 1.25rem; }
+.nav-links { display: flex; gap: 1.25rem; align-items: center; }
+.nav-icon { font-size: 1.25rem; line-height: 1; }
 
 main {
   max-width: 900px;
@@ -365,4 +366,29 @@ a.track-name:hover { color: #fff; text-decoration: underline; }
 .np-controls { display: flex; gap: 0.5rem; flex-shrink: 0; }
 .np-btn { background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; padding: 0.25rem; line-height: 1; }
 .np-btn:hover { color: #ccc; }
+
+/* Collection page */
+.collection-page h1 { font-size: 1.6rem; margin-bottom: 1.25rem; }
+.tag-count { font-size: 1rem; font-weight: 400; color: #888; }
+.collection-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; }
+.collection-controls { display: flex; align-items: center; gap: 0.75rem; }
+.sort-select { background: #1e1e1e; border: 1px solid #444; color: #eee; padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.88rem; cursor: pointer; }
+.clear-all-btn { background: none; border: 1px solid #555; color: #aaa; padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.88rem; cursor: pointer; transition: all 0.15s; }
+.clear-all-btn:hover { border-color: #888; color: #eee; }
+.clear-all-btn.confirm { border-color: #c0392b; color: #e74c3c; }
+.tag-list { list-style: none; border: 1px solid #2a2a2a; border-radius: 8px; overflow: hidden; }
+.tag-item { display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid #2a2a2a; padding: 0.6rem 0.75rem; }
+.tag-item:last-child { border-bottom: none; }
+.tag-item-link { display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; text-decoration: none; color: inherit; }
+.tag-item-link:hover .tag-name { text-decoration: underline; }
+.tag-art { width: 44px; height: 44px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+.tag-info { display: flex; flex-direction: column; min-width: 0; }
+.tag-name { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tag-artist { font-size: 0.8rem; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tag-date { font-size: 0.75rem; color: #666; }
+.tag-type-badge { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; padding: 0.2rem 0.4rem; border-radius: 4px; flex-shrink: 0; }
+.tag-type-album { background: #1a3a5c; color: #6ab0f5; }
+.tag-type-track { background: #2a1a3a; color: #b06af5; }
+.tag-delete-btn { background: none; border: none; color: #555; font-size: 1rem; cursor: pointer; flex-shrink: 0; padding: 0.25rem; line-height: 1; }
+.tag-delete-btn:hover { color: #e74c3c; }
 main { padding-bottom: 5rem; }

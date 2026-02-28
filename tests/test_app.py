@@ -514,3 +514,73 @@ class TestPlayTag:
     def test_missing_tag_returns_400(self, client):
         resp = client.post("/play/tag", json={})
         assert resp.status_code == 400
+
+
+class TestCollection:
+    def test_collection_page_returns_200(self, client, tmp_path, monkeypatch):
+        import app
+        monkeypatch.setattr(app, "TAGS_PATH", str(tmp_path / "tags.json"))
+        resp = client.get("/collection")
+        assert resp.status_code == 200
+
+    def test_collection_empty_by_default(self, client, tmp_path, monkeypatch):
+        import app
+        monkeypatch.setattr(app, "TAGS_PATH", str(tmp_path / "tags.json"))
+        resp = client.get("/collection")
+        assert b"No tags written yet" in resp.data
+
+    def test_delete_removes_entry(self, client, tmp_path, monkeypatch):
+        import app
+        tags_file = tmp_path / "tags.json"
+        tags_file.write_text(json.dumps([
+            {"tag_string": "apple:1440903625", "type": "album", "name": "Hysteria",
+             "artist": "Def Leppard", "artwork_url": "", "album_id": 1440903625,
+             "track_id": None, "written_at": "2026-02-28T12:00:00"},
+        ]))
+        monkeypatch.setattr(app, "TAGS_PATH", str(tags_file))
+        resp = client.post("/collection/delete", json={"tag_string": "apple:1440903625"})
+        assert resp.status_code == 200
+        assert json.loads(tags_file.read_text()) == []
+
+    def test_delete_missing_tag_string_returns_400(self, client, tmp_path, monkeypatch):
+        import app
+        monkeypatch.setattr(app, "TAGS_PATH", str(tmp_path / "tags.json"))
+        resp = client.post("/collection/delete", json={})
+        assert resp.status_code == 400
+
+    def test_clear_empties_collection(self, client, tmp_path, monkeypatch):
+        import app
+        tags_file = tmp_path / "tags.json"
+        tags_file.write_text(json.dumps([
+            {"tag_string": "apple:1440903625", "type": "album", "name": "Hysteria",
+             "artist": "Def Leppard", "artwork_url": "", "album_id": 1440903625,
+             "track_id": None, "written_at": "2026-02-28T12:00:00"},
+        ]))
+        monkeypatch.setattr(app, "TAGS_PATH", str(tags_file))
+        resp = client.post("/collection/clear")
+        assert resp.status_code == 200
+        assert json.loads(tags_file.read_text()) == []
+
+    def test_write_tag_records_album(self, client, temp_config, tmp_path, monkeypatch):
+        import app
+        monkeypatch.setattr(app, "TAGS_PATH", str(tmp_path / "tags.json"))
+        mock_nfc = MagicMock()
+        with patch("app.MockNFC", return_value=mock_nfc), \
+             patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+            client.post("/write-tag", json={"album_id": "1440903625"})
+        tags = json.loads((tmp_path / "tags.json").read_text())
+        assert len(tags) == 1
+        assert tags[0]["tag_string"] == "apple:1440903625"
+        assert tags[0]["type"] == "album"
+
+    def test_write_tag_records_track(self, client, temp_config, tmp_path, monkeypatch):
+        import app
+        monkeypatch.setattr(app, "TAGS_PATH", str(tmp_path / "tags.json"))
+        mock_nfc = MagicMock()
+        with patch("app.MockNFC", return_value=mock_nfc), \
+             patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+            client.post("/write-tag", json={"track_id": "1440904001"})
+        tags = json.loads((tmp_path / "tags.json").read_text())
+        assert len(tags) == 1
+        assert tags[0]["tag_string"] == "apple:track:1440904001"
+        assert tags[0]["type"] == "track"

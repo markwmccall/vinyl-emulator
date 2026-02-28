@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %} — Collection{% endblock %}
+
+{% block content %}
+<div class="collection-page">
+  <div class="collection-header">
+    <h1>Collection <span id="tag-count" class="tag-count">({{ tags|length }} tag{{ 's' if tags|length != 1 else '' }})</span></h1>
+    <div id="collection-controls" class="collection-controls" {% if not tags %}style="display:none"{% endif %}>
+      <select id="sort-select" class="sort-select">
+        <option value="date">Sort: Date</option>
+        <option value="name">Sort: Name</option>
+        <option value="artist">Sort: Artist</option>
+      </select>
+      <button id="clear-all-btn" class="clear-all-btn">Clear All</button>
+    </div>
+  </div>
+
+  {% if not tags %}
+  <p id="empty-msg" class="empty">No tags written yet. <a href="/">Search for music</a> to get started.</p>
+  {% else %}
+  <p id="empty-msg" class="empty" style="display:none">No tags written yet. <a href="/">Search for music</a> to get started.</p>
+  {% endif %}
+
+  <ul class="tag-list" id="tag-list"></ul>
+</div>
+
+<script>
+  let tags = {{ tags | tojson }};
+
+  function formatDate(iso) {
+    const d = new Date(iso + 'Z');
+    return d.toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
+  }
+
+  function sortTags(arr, by) {
+    const copy = [...arr];
+    if (by === 'name') copy.sort((a, b) => a.name.localeCompare(b.name));
+    else if (by === 'artist') copy.sort((a, b) => a.artist.localeCompare(b.artist));
+    else copy.sort((a, b) => b.written_at.localeCompare(a.written_at));
+    return copy;
+  }
+
+  function updateCount() {
+    const n = tags.length;
+    document.getElementById('tag-count').textContent = `(${n} tag${n !== 1 ? 's' : ''})`;
+    const controls = document.getElementById('collection-controls');
+    const emptyMsg = document.getElementById('empty-msg');
+    controls.style.display = tags.length ? '' : 'none';
+    emptyMsg.style.display = tags.length ? 'none' : '';
+  }
+
+  function renderTags() {
+    const by = document.getElementById('sort-select').value;
+    const sorted = sortTags(tags, by);
+    const list = document.getElementById('tag-list');
+    list.innerHTML = sorted.map(t => {
+      const href = t.type === 'track' ? `/track/${t.track_id}` : `/album/${t.album_id}`;
+      return `
+        <li class="tag-item">
+          <a href="${href}" class="tag-item-link">
+            <img src="${t.artwork_url}" alt="" class="tag-art">
+            <div class="tag-info">
+              <span class="tag-name">${t.name}</span>
+              <span class="tag-artist">${t.artist}</span>
+              <span class="tag-date">${formatDate(t.written_at)}</span>
+            </div>
+          </a>
+          <span class="tag-type-badge tag-type-${t.type}">${t.type.toUpperCase()}</span>
+          <button class="tag-delete-btn" data-tag="${t.tag_string}" title="Remove from collection">🗑</button>
+        </li>`;
+    }).join('');
+
+    list.querySelectorAll('.tag-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const tagString = btn.dataset.tag;
+        await fetch('/collection/delete', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({tag_string: tagString}),
+        });
+        tags = tags.filter(t => t.tag_string !== tagString);
+        renderTags();
+        updateCount();
+      });
+    });
+  }
+
+  document.getElementById('sort-select').addEventListener('change', renderTags);
+
+  const clearAllBtn = document.getElementById('clear-all-btn');
+  let clearPending = false;
+  let clearTimer;
+
+  clearAllBtn.addEventListener('click', async () => {
+    if (!clearPending) {
+      clearPending = true;
+      clearAllBtn.textContent = 'Tap again to confirm';
+      clearAllBtn.classList.add('confirm');
+      clearTimer = setTimeout(() => {
+        clearPending = false;
+        clearAllBtn.textContent = 'Clear All';
+        clearAllBtn.classList.remove('confirm');
+      }, 3000);
+    } else {
+      clearTimeout(clearTimer);
+      await fetch('/collection/clear', {method: 'POST'});
+      tags = [];
+      renderTags();
+      updateCount();
+      clearPending = false;
+      clearAllBtn.textContent = 'Clear All';
+      clearAllBtn.classList.remove('confirm');
+    }
+  });
+
+  renderTags();
+</script>
+{% endblock %}

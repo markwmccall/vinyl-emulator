@@ -16,8 +16,9 @@
     <nav>
       <a href="{{ url_for('index') }}" class="logo">&#9679; Vinyl Emulator</a>
       <div class="nav-links">
+        <a href="{{ url_for('collection') }}">Collection</a>
         <a href="{{ url_for('verify') }}">Verify Tag</a>
-        <a href="{{ url_for('settings') }}">Settings</a>
+        <a href="{{ url_for('settings') }}" class="nav-icon" title="Settings">&#9881;</a>
       </div>
     </nav>
   </header>

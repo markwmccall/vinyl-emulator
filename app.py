@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import subprocess
+from datetime import datetime
 
 from flask import Flask, abort, jsonify, render_template, request
 
@@ -12,11 +13,40 @@ from sonos_controller import detect_apple_music_sn, get_now_playing, get_speaker
 app = Flask(__name__)
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
+TAGS_PATH = os.path.join(os.path.dirname(__file__), "tags.json")
 
 
 def _load_config():
     with open(CONFIG_PATH) as f:
         return json.load(f)
+
+
+def _load_tags():
+    if not os.path.exists(TAGS_PATH):
+        return []
+    with open(TAGS_PATH) as f:
+        return json.load(f)
+
+
+def _save_tags(tags):
+    with open(TAGS_PATH, "w") as f:
+        json.dump(tags, f, indent=2)
+
+
+def _record_tag(tag_string, tag_type, name, artist, artwork_url, album_id=None, track_id=None):
+    tags = _load_tags()
+    tags = [t for t in tags if t["tag_string"] != tag_string]
+    tags.insert(0, {
+        "tag_string": tag_string,
+        "type": tag_type,
+        "name": name,
+        "artist": artist,
+        "artwork_url": artwork_url,
+        "album_id": album_id,
+        "track_id": track_id,
+        "written_at": datetime.utcnow().isoformat(),
+    })
+    _save_tags(tags)
 
 
 def _make_nfc(config):
@@ -74,6 +104,22 @@ def write_tag():
     else:
         tag_data = f"apple:{data['album_id']}"
     nfc.write_tag(tag_data)
+    try:
+        if "track_id" in data:
+            tracks = apple_music.get_track(data["track_id"])
+            if tracks:
+                t = tracks[0]
+                _record_tag(tag_data, "track", t["name"], t["artist"],
+                            t.get("artwork_url", ""), album_id=t.get("album_id"),
+                            track_id=t["track_id"])
+        else:
+            tracks = apple_music.get_album_tracks(data["album_id"])
+            if tracks:
+                t = tracks[0]
+                _record_tag(tag_data, "album", t["album"], t["artist"],
+                            t.get("artwork_url", ""), album_id=data["album_id"])
+    except Exception:
+        pass
     return jsonify({"status": "ok", "written": tag_data})
 
 
@@ -242,6 +288,28 @@ def play_tag():
     else:
         tracks = apple_music.get_album_tracks(tag["id"])
     play_album(config["speaker_ip"], tracks, config["sn"])
+    return jsonify({"status": "ok"})
+
+
+@app.route("/collection")
+def collection():
+    return render_template("collection.html", tags=_load_tags())
+
+
+@app.route("/collection/delete", methods=["POST"])
+def collection_delete():
+    data = request.get_json()
+    tag_string = data.get("tag_string") if data else None
+    if not tag_string:
+        return jsonify({"error": "tag_string required"}), 400
+    tags = [t for t in _load_tags() if t["tag_string"] != tag_string]
+    _save_tags(tags)
+    return jsonify({"status": "ok"})
+
+
+@app.route("/collection/clear", methods=["POST"])
+def collection_clear():
+    _save_tags([])
     return jsonify({"status": "ok"})
 
 
