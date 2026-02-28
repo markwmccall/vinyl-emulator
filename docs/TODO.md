@@ -2,6 +2,14 @@
 
 ## 🔴 Top Priority
 
+- [ ] **Speaker IP self-healing** — Sonos speakers get their IP from DHCP, which can change after a router reboot or lease renewal. If the IP changes, all playback silently fails. Fix by storing the speaker room name alongside the IP and re-resolving on failure — no DHCP reservation required.
+  - Add `speaker_name` to `config.json` (e.g. `"Living Room"`) alongside existing `speaker_ip`
+  - Update the Discover button flow (`/discover` route + Settings page) to save `speaker_name` at the same time as `speaker_ip`
+  - Add `resolve_speaker(config_path)` to `sonos_controller.py` — returns a `soco.SoCo` instance using the cached `speaker_ip`; on any `SoCoException` or connection error, runs `soco.discover()`, finds the zone matching `speaker_name`, updates `speaker_ip` in `config.json`, and retries once. Raises if retry also fails.
+  - Replace all `soco.SoCo(speaker_ip)` call sites in `sonos_controller.py` with `resolve_speaker(config_path)` — transparent to `app.py` and `player.py`
+  - Happy path: zero latency (uses cached IP). On IP change: ~1-2s delay on first tap after the change, then fast again. No user action required.
+  - Tests: `test_uses_cached_ip_on_success`, `test_rediscovers_on_connection_failure`, `test_updates_config_after_rediscovery`, `test_raises_if_speaker_not_found_after_rediscovery`
+
 - [ ] **In-app update system** — Settings page shows current version (`VERSION` constant in `app.py`) and latest GitHub release. If a newer version is available, shows a banner with a one-click "Update" button. Clicking it runs `git pull` + `pip3 install -r requirements.txt` + restarts both systemd services — no SSH required.
   - Add `VERSION = "0.9.0"` to `app.py`, expose via `/health` response
   - Add `packaging>=24.0` to `requirements.txt` — use `packaging.version.Version` for safe semver comparison (plain string compare fails for e.g. `"0.10.0" > "0.9.0"`)
