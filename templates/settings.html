@@ -48,7 +48,7 @@
       <label for="nfc_mode">NFC Mode</label>
       <select id="nfc_mode" name="nfc_mode">
         <option value="mock" {% if config.nfc_mode == 'mock' %}selected{% endif %}>
-          mock (Mac testing)
+          mock (no hardware)
         </option>
         <option value="pn532" {% if config.nfc_mode == 'pn532' %}selected{% endif %}>
           pn532 (Raspberry Pi)
@@ -58,6 +58,13 @@
 
     <button type="submit" class="save-btn">Save</button>
   </form>
+
+  <div class="sticker-section">
+    <h2>Web UI Sticker</h2>
+    <p>Write a URL tag that opens this web UI when tapped on an iPhone.</p>
+    <button id="write-url-btn" type="button">Write Sticker Tag</button>
+    <p id="write-url-status" class="hint"></p>
+  </div>
 </div>
 
 <script>
@@ -157,5 +164,29 @@
     startBtn.addEventListener('click', () => controlPlayer('start'));
     fetchPlayerStatus();
   }
+
+  const writeUrlBtn = document.getElementById('write-url-btn');
+  const writeUrlStatus = document.getElementById('write-url-status');
+
+  writeUrlBtn.addEventListener('click', async () => {
+    writeUrlBtn.disabled = true;
+    writeUrlStatus.textContent = 'Hold tag to reader…';
+    writeUrlStatus.className = 'hint';
+    try {
+      const resp = await fetch('/write-url-tag', {method: 'POST'});
+      const data = await resp.json();
+      if (resp.ok) {
+        writeUrlStatus.textContent = '✓ Written: ' + data.written;
+        writeUrlStatus.className = 'hint success';
+      } else {
+        writeUrlStatus.textContent = data.error || 'Write failed.';
+        writeUrlStatus.className = 'hint error';
+      }
+    } catch (e) {
+      writeUrlStatus.textContent = 'Error — check the console.';
+      writeUrlStatus.className = 'hint error';
+    }
+    writeUrlBtn.disabled = false;
+  });
 </script>
 {% endblock %}

@@ -50,6 +50,11 @@ class TestMockNFC:
         nfc = MockNFC()
         assert nfc.write_tag("apple:1440903625") is True
 
+    def test_write_url_tag_returns_true(self):
+        from nfc_interface import MockNFC
+        nfc = MockNFC()
+        assert nfc.write_url_tag("http://10.0.0.71:5000") is True
+
 
 class TestPN532NFC:
     def test_read_tag_not_implemented(self):
@@ -63,3 +68,9 @@ class TestPN532NFC:
         nfc = PN532NFC()
         with pytest.raises(NotImplementedError):
             nfc.write_tag("apple:1440903625")
+
+    def test_write_url_tag_not_implemented(self):
+        from nfc_interface import PN532NFC
+        nfc = PN532NFC()
+        with pytest.raises(NotImplementedError):
+            nfc.write_url_tag("http://10.0.0.71:5000")

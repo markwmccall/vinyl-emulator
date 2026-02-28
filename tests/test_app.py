@@ -163,6 +163,34 @@ class TestWriteTag:
         assert resp.status_code == 400
 
 
+class TestWriteUrlTag:
+    def test_calls_write_url_tag(self, client, temp_config):
+        mock_nfc = MagicMock()
+        with patch("app.MockNFC", return_value=mock_nfc):
+            resp = client.post("/write-url-tag")
+        assert resp.status_code == 200
+        mock_nfc.write_url_tag.assert_called_once()
+
+    def test_returns_written_url(self, client, temp_config):
+        mock_nfc = MagicMock()
+        with patch("app.MockNFC", return_value=mock_nfc):
+            resp = client.post("/write-url-tag")
+        data = resp.get_json()
+        assert data["status"] == "ok"
+        assert "written" in data
+
+    def test_returns_501_for_pn532(self, client, temp_config, monkeypatch):
+        import app
+        monkeypatch.setattr(app, "CONFIG_PATH", str(temp_config))
+        import json
+        temp_config.write_text(json.dumps({"sn": "3", "speaker_ip": "10.0.0.12", "nfc_mode": "pn532"}))
+        mock_nfc = MagicMock()
+        mock_nfc.write_url_tag.side_effect = NotImplementedError("PN532NFC not yet implemented")
+        with patch("app.PN532NFC", return_value=mock_nfc):
+            resp = client.post("/write-url-tag")
+        assert resp.status_code == 501
+
+
 class TestAlbumPage:
     def test_shows_album_id(self, client):
         with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):

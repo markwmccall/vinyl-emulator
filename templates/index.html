@@ -49,7 +49,11 @@
     timer = setTimeout(() => fetchResults(q), 300);
   });
 
-  // Re-run search if the browser restored a value into the input (back navigation)
+  // Pre-fill from ?q= URL param (e.g. from Now Playing search link)
+  const urlQ = new URLSearchParams(window.location.search).get('q');
+  if (urlQ && !input.value.trim()) { input.value = urlQ; }
+
+  // Re-run search if the browser restored a value or ?q= param was set
   if (input.value.trim()) { clearBtn.style.display = 'flex'; fetchResults(input.value.trim()); }
 
   async function fetchResults(q) {

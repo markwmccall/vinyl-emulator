@@ -47,7 +47,13 @@
         const art = document.getElementById('np-art');
         if (data.artwork_url) { art.src = data.artwork_url; art.style.display = 'block'; }
         else { art.style.display = 'none'; }
-        document.getElementById('np-title').textContent = data.title;
+        const titleEl = document.getElementById('np-title');
+        if (!data.album_id) {
+          const q = encodeURIComponent(data.artist + ' ' + data.title);
+          titleEl.innerHTML = `<a href="/?q=${q}" class="np-search-link">${data.title}</a>`;
+        } else {
+          titleEl.textContent = data.title;
+        }
         document.getElementById('np-artist').textContent = data.artist;
         const albumEl = document.getElementById('np-album');
         if (data.album_id) {

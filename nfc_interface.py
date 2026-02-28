@@ -32,6 +32,11 @@ class MockNFC:
         print(f"[MockNFC] Would write: {data}")
         return True
 
+    def write_url_tag(self, url):
+        """Print what URL would be written to the physical tag."""
+        print(f"[MockNFC] Would write URL: {url}")
+        return True
+
 
 class PN532NFC:
     """Raspberry Pi NFC implementation using the Waveshare PN532 HAT.
@@ -43,4 +48,7 @@ class PN532NFC:
         raise NotImplementedError("PN532NFC not yet implemented — Phase 5")
 
     def write_tag(self, data):
+        raise NotImplementedError("PN532NFC not yet implemented — Phase 5")
+
+    def write_url_tag(self, url):
         raise NotImplementedError("PN532NFC not yet implemented — Phase 5")

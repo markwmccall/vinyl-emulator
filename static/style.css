@@ -103,6 +103,8 @@ main {
 .album-meta h1 { font-size: 1.8rem; margin-bottom: 0.4rem; }
 .album-meta .artist { color: #aaa; font-size: 1.1rem; margin-bottom: 1.25rem; }
 .track-subtitle { font-size: 0.95rem; color: #888; margin-top: -0.75rem; margin-bottom: 1.25rem; }
+.track-subtitle a { color: inherit; text-decoration: none; }
+.track-subtitle a:hover { text-decoration: underline; }
 
 .tag-string {
   font-size: 0.85rem;
@@ -294,6 +296,16 @@ a.track-name:hover { color: #fff; text-decoration: underline; }
 }
 .save-btn:hover { background: #f06a10; }
 
+.sticker-section {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-top: 1.5rem;
+}
+.sticker-section h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: #aaa; margin-bottom: 0.4rem; }
+.sticker-section p { font-size: 0.88rem; color: #888; margin-bottom: 0.75rem; }
+
 /* Search tabs */
 .search-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
 .tab-btn {
@@ -348,6 +360,8 @@ a.track-name:hover { color: #fff; text-decoration: underline; }
 .np-album { font-size: 0.75rem; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-album a { color: inherit; text-decoration: none; }
 .np-album a:hover { text-decoration: underline; }
+.np-search-link { color: inherit; text-decoration: none; }
+.np-search-link:hover { text-decoration: underline; }
 .np-controls { display: flex; gap: 0.5rem; flex-shrink: 0; }
 .np-btn { background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; padding: 0.25rem; line-height: 1; }
 .np-btn:hover { color: #ccc; }

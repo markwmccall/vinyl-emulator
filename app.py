@@ -77,6 +77,18 @@ def write_tag():
     return jsonify({"status": "ok", "written": tag_data})
 
 
+@app.route("/write-url-tag", methods=["POST"])
+def write_url_tag():
+    url = request.host_url.rstrip("/")
+    config = _load_config()
+    nfc = _make_nfc(config)
+    try:
+        nfc.write_url_tag(url)
+    except NotImplementedError as e:
+        return jsonify({"error": str(e)}), 501
+    return jsonify({"status": "ok", "written": url})
+
+
 @app.route("/play", methods=["POST"])
 def play():
     data = request.get_json()

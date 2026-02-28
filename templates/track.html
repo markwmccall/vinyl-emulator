@@ -8,7 +8,13 @@
     <div class="album-meta">
       <h1>{{ track.name }}</h1>
       <p class="artist">{{ track.artist }}</p>
-      <p class="track-subtitle">{{ track.album }}</p>
+      <p class="track-subtitle">
+        {% if track.album_id %}
+          <a href="/album/{{ track.album_id }}">{{ track.album }}</a>
+        {% else %}
+          {{ track.album }}
+        {% endif %}
+      </p>
       <p class="tag-string">Tag: <code>apple:track:{{ track_id }}</code></p>
 
       <div class="action-btns">
