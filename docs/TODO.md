@@ -8,7 +8,11 @@
   - Add `/update/check` route — hits GitHub releases API (no auth needed for public repos), caches result 24h in a module-level dict, returns `{"current": "0.9.0", "latest": "1.0.0", "update_available": true}`
     - GitHub API endpoint: `https://api.github.com/repos/markwmccall/vinyl-emulator/releases/latest`
     - Response field to read: `tag_name` (e.g. `"v1.0.0"`) — strip leading `v` before comparing
-  - Add `/update/apply` POST route — spawn a **detached external process** via `subprocess.Popen(["python3", "updater.py"], start_new_session=True)`, return `{"status": "started"}` immediately. **Do NOT use `threading.Thread`** — `systemctl restart vinyl-web` kills the Flask process and all its threads, so a thread cannot survive to run the health check after the restart. `start_new_session=True` puts the updater in a new process group outside the vinyl-web cgroup, so it survives the restart.
+  - Add `/update/apply` POST route — spawn a **detached external process** via `subprocess.Popen(["python3", "updater.py"], start_new_session=True)`, return `{"status": "started"}` immediately. **Do NOT use `threading.Thread`** — `systemctl restart vinyl-web` kills the Flask process and all its threads, so a thread cannot survive to run the health check after the restart.
+  - **`start_new_session=True` alone is not sufficient** — systemd's default `KillMode=control-group` kills all processes in the service cgroup after the main process exits, regardless of session. Two things together are required:
+    1. `start_new_session=True` in `Popen` (prevents signal inheritance from Flask)
+    2. Add `KillMode=process` to `etc/vinyl-web.service` (tells systemd to only kill the main process on restart, leaving child processes alive)
+  - Update `setup.sh` to include `KillMode=process` in the installed service file
   - Add `updater.py` — standalone script that runs the full update sequence and writes progress to `update.log`
   - Add `/update/status` GET route — reads `update.log` from disk, returns `{"state": "idle"|"running"|"success"|"failed"|"rolled_back", "log": "...last 20 lines..."}`. Reading from a file (not thread state) means this works correctly even after vinyl-web has restarted.
   - Settings page: show version in footer; poll `/update/status` every 2s while update is running; show result when done
