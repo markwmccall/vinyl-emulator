@@ -26,8 +26,11 @@
     1. `git pull` → if fails, abort (nothing changed)
     2. `pip3 install --break-system-packages -r requirements.txt` → if fails, `git reset --hard <prev-commit>`, abort
     3. `sudo systemctl restart vinyl-web vinyl-player`
-    4. Health check — poll `GET http://localhost:5000/health` for up to **30s** after restart (Pi Zero 2 W is slow; Python startup takes several seconds; 15s is not enough)
-    5. If health check fails → `git reset --hard <prev-commit>`, re-run pip install, restart services again
+    4. Health check — **two-stage** (a fixed wall-clock HTTP timeout is wrong: if startup takes multiple minutes, it fires a false rollback which itself then also times out, leaving the system in a genuinely broken state):
+       - Stage 1: poll `systemctl is-active vinyl-web` every 2s for up to **5 minutes** — waiting for the service process to start. This is independent of HTTP and tells you the process came up.
+       - Stage 2: once `active`, poll `GET http://localhost:5000/health` every 2s for up to **60s** — by this point Python is already running so HTTP response should be fast.
+       - Rollback trigger: service enters `failed` state at any point, OR never becomes `active` within 5 minutes.
+    5. If rollback triggered → `git reset --hard <prev-commit>`, re-run pip install, restart services again
   - `/update/rollback` POST route — manually revert to commit saved in `.update-rollback` (escape hatch if auto-rollback also fails to reach the health check)
   - All steps append to `update.log` with timestamps; `/update/status` exposes last 20 lines
 
