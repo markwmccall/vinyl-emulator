@@ -8,15 +8,16 @@
   - Add `/update/check` route — hits GitHub releases API (no auth needed for public repos), caches result 24h in a module-level dict, returns `{"current": "0.9.0", "latest": "1.0.0", "update_available": true}`
     - GitHub API endpoint: `https://api.github.com/repos/markwmccall/vinyl-emulator/releases/latest`
     - Response field to read: `tag_name` (e.g. `"v1.0.0"`) — strip leading `v` before comparing
-  - Add `/update/apply` POST route — **must be async**: spawn a background `threading.Thread`, return `{"status": "started"}` immediately (the thread restarts the very server handling this request, so it cannot block)
-  - Add `/update/status` GET route — returns current state of the background update: `{"state": "idle"|"running"|"success"|"failed"|"rolled_back", "log": "...last N lines of update.log..."}`
+  - Add `/update/apply` POST route — spawn a **detached external process** via `subprocess.Popen(["python3", "updater.py"], start_new_session=True)`, return `{"status": "started"}` immediately. **Do NOT use `threading.Thread`** — `systemctl restart vinyl-web` kills the Flask process and all its threads, so a thread cannot survive to run the health check after the restart. `start_new_session=True` puts the updater in a new process group outside the vinyl-web cgroup, so it survives the restart.
+  - Add `updater.py` — standalone script that runs the full update sequence and writes progress to `update.log`
+  - Add `/update/status` GET route — reads `update.log` from disk, returns `{"state": "idle"|"running"|"success"|"failed"|"rolled_back", "log": "...last 20 lines..."}`. Reading from a file (not thread state) means this works correctly even after vinyl-web has restarted.
   - Settings page: show version in footer; poll `/update/status` every 2s while update is running; show result when done
   - Only show update controls in `pn532` mode (on Pi); mock mode shows version only
   - Add `.update-rollback` and `update.log` to `.gitignore`
 
 - [ ] **Update rollback / safety net** — if the update causes `vinyl-web` to fail, the Pi becomes unreachable (bricked) without SSH. Mitigate with:
   - Before updating: record current commit hash (`git rev-parse HEAD`) and write to `.update-rollback`
-  - Update sequence (runs in background thread) with error checking at each step:
+  - Update sequence (runs in detached `updater.py` process) with error checking at each step:
     1. `git pull` → if fails, abort (nothing changed)
     2. `pip3 install --break-system-packages -r requirements.txt` → if fails, `git reset --hard <prev-commit>`, abort
     3. `sudo systemctl restart vinyl-web vinyl-player`
