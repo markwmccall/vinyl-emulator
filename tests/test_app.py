@@ -381,6 +381,48 @@ class TestDetectSn:
         assert resp.status_code == 400
 
 
+class TestNowPlaying:
+    def test_returns_playing_false_when_nothing_playing(self, client, temp_config):
+        with patch("app.get_now_playing", return_value=None):
+            resp = client.get("/now-playing")
+        assert resp.status_code == 200
+        assert resp.get_json()["playing"] is False
+
+    def test_returns_track_info_for_non_apple_music(self, client, temp_config):
+        with patch("app.get_now_playing", return_value={
+            "title": "Some Radio", "artist": "", "album": "", "track_id": None, "paused": False
+        }):
+            resp = client.get("/now-playing")
+        data = resp.get_json()
+        assert data["playing"] is True
+        assert data["title"] == "Some Radio"
+        assert data["album_id"] is None
+        assert data["artwork_url"] is None
+
+    def test_returns_album_id_for_apple_music_track(self, client, temp_config):
+        with patch("app.get_now_playing", return_value={
+            "title": "Women", "artist": "Def Leppard", "album": "Hysteria",
+            "track_id": 1440904001, "paused": False,
+        }), patch("app.apple_music.get_track", return_value=[{
+            "track_id": 1440904001, "name": "Women", "track_number": 1,
+            "artist": "Def Leppard", "album": "Hysteria",
+            "album_id": 1440903625,
+            "artwork_url": "https://example.com/600x600bb.jpg",
+        }]):
+            resp = client.get("/now-playing")
+        data = resp.get_json()
+        assert data["album_id"] == 1440903625
+        assert data["artwork_url"] == "https://example.com/600x600bb.jpg"
+
+    def test_returns_playing_false_when_no_speaker(self, client, tmp_path, monkeypatch):
+        config_file = tmp_path / "config.json"
+        config_file.write_text('{"sn": "3", "speaker_ip": "", "nfc_mode": "mock"}')
+        import app
+        monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        resp = client.get("/now-playing")
+        assert resp.get_json()["playing"] is False
+
+
 class TestHealth:
     def test_returns_200(self, client):
         resp = client.get("/health")

@@ -129,6 +129,7 @@ class TestGetTrack:
         assert t["artist"] == "Def Leppard"
         assert t["album"] == "Hysteria"
         assert "artwork_url" in t
+        assert "album_id" in t
 
     def test_returns_empty_list_when_not_found(self):
         from apple_music import get_track

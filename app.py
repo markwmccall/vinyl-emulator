@@ -7,7 +7,7 @@ from flask import Flask, abort, jsonify, render_template, request
 
 import apple_music
 from nfc_interface import MockNFC, PN532NFC, parse_tag_data
-from sonos_controller import detect_apple_music_sn, get_speakers, pause, play_album, resume, stop
+from sonos_controller import detect_apple_music_sn, get_now_playing, get_speakers, pause, play_album, resume, stop
 
 app = Flask(__name__)
 
@@ -165,6 +165,32 @@ def detect_sn():
         return jsonify({"error": "No Apple Music favorites found in Sonos — enter 3 or 5 manually"}), 404
     return jsonify({"sn": sn})
 
+
+
+@app.route("/now-playing")
+def now_playing():
+    config = _load_config()
+    if not config.get("speaker_ip"):
+        return jsonify({"playing": False})
+    info = get_now_playing(config["speaker_ip"])
+    if info is None:
+        return jsonify({"playing": False})
+    result = {
+        "playing": True,
+        "paused": info["paused"],
+        "title": info["title"],
+        "artist": info["artist"],
+        "album": info["album"],
+        "track_id": info["track_id"],
+        "album_id": None,
+        "artwork_url": None,
+    }
+    if info["track_id"]:
+        tracks = apple_music.get_track(info["track_id"])
+        if tracks:
+            result["album_id"] = tracks[0].get("album_id")
+            result["artwork_url"] = tracks[0].get("artwork_url")
+    return jsonify(result)
 
 
 @app.route("/health")

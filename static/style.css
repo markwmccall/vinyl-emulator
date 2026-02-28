@@ -308,3 +308,29 @@ a.track-name:hover { color: #fff; text-decoration: underline; }
   .album-art { width: 100%; height: auto; }
   .results-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
 }
+
+/* Now Playing sticky bar */
+.now-playing-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #1c1c1e;
+  border-top: 1px solid #333;
+  padding: 0.6rem 1rem;
+  z-index: 100;
+}
+.np-art { width: 44px; height: 44px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+.np-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.np-title { font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-artist { font-size: 0.78rem; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-album { font-size: 0.75rem; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-album a { color: inherit; text-decoration: none; }
+.np-album a:hover { text-decoration: underline; }
+.np-controls { display: flex; gap: 0.5rem; flex-shrink: 0; }
+.np-btn { background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; padding: 0.25rem; line-height: 1; }
+.np-btn:hover { color: #ccc; }
+main { padding-bottom: 5rem; }

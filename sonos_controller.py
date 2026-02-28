@@ -98,6 +98,35 @@ def detect_apple_music_sn(speaker_ip):
     return None
 
 
+def get_now_playing(speaker_ip):
+    """Return info about the current track, or None if stopped.
+
+    Checks transport state first so paused tracks are still shown.
+    """
+    try:
+        speaker = soco.SoCo(speaker_ip)
+        transport = speaker.get_current_transport_info()
+        state = transport.get("current_transport_state", "STOPPED")
+        if state not in ("PLAYING", "PAUSED_PLAYBACK"):
+            return None
+        info = speaker.get_current_track_info()
+        if not info.get("title"):
+            return None
+        track_id = None
+        m = re.search(r"song%3[aA](\d+)\.mp4", info.get("uri", ""))
+        if m and "sid=204" in info.get("uri", ""):
+            track_id = int(m.group(1))
+        return {
+            "title": info["title"],
+            "artist": info.get("artist", ""),
+            "album": info.get("album", ""),
+            "track_id": track_id,
+            "paused": state == "PAUSED_PLAYBACK",
+        }
+    except Exception:
+        return None
+
+
 def pause(speaker_ip):
     soco.SoCo(speaker_ip).pause()
 

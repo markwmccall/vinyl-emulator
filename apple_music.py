@@ -60,6 +60,7 @@ def get_track(track_id):
             "track_number": t.get("trackNumber", 1),
             "artist": t["artistName"],
             "album": t["collectionName"],
+            "album_id": t.get("collectionId"),
             "artwork_url": upgrade_artwork_url(t.get("artworkUrl100", "")),
         }
     ]

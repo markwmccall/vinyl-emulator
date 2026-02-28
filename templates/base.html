@@ -24,5 +24,59 @@
   <main>
     {% block content %}{% endblock %}
   </main>
+
+  <div id="now-playing-bar" class="now-playing-bar" style="display:none">
+    <img id="np-art" src="" alt="" class="np-art" style="display:none">
+    <div class="np-info">
+      <span id="np-title" class="np-title"></span>
+      <span id="np-artist" class="np-artist"></span>
+      <span id="np-album" class="np-album"></span>
+    </div>
+    <div class="np-controls">
+      <button id="np-pause-btn" class="np-btn" title="Pause">⏸</button>
+    </div>
+  </div>
+
+  <script>
+    async function refreshNowPlaying() {
+      try {
+        const resp = await fetch('/now-playing');
+        const data = await resp.json();
+        const bar = document.getElementById('now-playing-bar');
+        if (!data.playing) { bar.style.display = 'none'; return; }
+        const art = document.getElementById('np-art');
+        if (data.artwork_url) { art.src = data.artwork_url; art.style.display = 'block'; }
+        else { art.style.display = 'none'; }
+        document.getElementById('np-title').textContent = data.title;
+        document.getElementById('np-artist').textContent = data.artist;
+        const albumEl = document.getElementById('np-album');
+        if (data.album_id) {
+          albumEl.innerHTML = `<a href="/album/${data.album_id}">${data.album}</a>`;
+        } else {
+          albumEl.textContent = data.album;
+        }
+        bar.style.display = 'flex';
+        paused = data.paused;
+        pauseBtn.textContent = paused ? '▶' : '⏸';
+        pauseBtn.title = paused ? 'Resume' : 'Pause';
+      } catch (e) {}
+    }
+
+    const pauseBtn = document.getElementById('np-pause-btn');
+    let paused = false;
+
+    pauseBtn.addEventListener('click', async () => {
+      const action = paused ? 'resume' : 'pause';
+      await fetch('/transport', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action})});
+      paused = !paused;
+      pauseBtn.textContent = paused ? '▶' : '⏸';
+      pauseBtn.title = paused ? 'Resume' : 'Pause';
+    });
+
+    window.refreshNowPlaying = refreshNowPlaying;
+    refreshNowPlaying();
+    setInterval(refreshNowPlaying, 5000);
+  </script>
 </body>
 </html>

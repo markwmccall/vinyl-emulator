@@ -115,6 +115,67 @@ class TestDetectAppleMusicSn:
         assert detect_apple_music_sn("10.0.0.12") is None
 
 
+class TestGetNowPlaying:
+    def _setup_playing(self, mock_speaker, state="PLAYING"):
+        mock_speaker.get_current_transport_info.return_value = {
+            "current_transport_state": state
+        }
+        mock_speaker.get_current_track_info.return_value = {
+            "title": "Women",
+            "artist": "Def Leppard",
+            "album": "Hysteria",
+            "uri": "x-sonos-http:song%3a1440904001.mp4?sid=204&flags=8232&sn=3",
+        }
+
+    def test_returns_track_info_when_playing(self, mock_speaker):
+        self._setup_playing(mock_speaker)
+        from sonos_controller import get_now_playing
+        result = get_now_playing("10.0.0.12")
+        assert result["title"] == "Women"
+        assert result["artist"] == "Def Leppard"
+        assert result["album"] == "Hysteria"
+
+    def test_paused_is_false_when_playing(self, mock_speaker):
+        self._setup_playing(mock_speaker, state="PLAYING")
+        from sonos_controller import get_now_playing
+        assert get_now_playing("10.0.0.12")["paused"] is False
+
+    def test_paused_is_true_when_paused(self, mock_speaker):
+        self._setup_playing(mock_speaker, state="PAUSED_PLAYBACK")
+        from sonos_controller import get_now_playing
+        assert get_now_playing("10.0.0.12")["paused"] is True
+
+    def test_returns_none_when_stopped(self, mock_speaker):
+        mock_speaker.get_current_transport_info.return_value = {
+            "current_transport_state": "STOPPED"
+        }
+        from sonos_controller import get_now_playing
+        assert get_now_playing("10.0.0.12") is None
+
+    def test_extracts_track_id_from_apple_music_uri(self, mock_speaker):
+        self._setup_playing(mock_speaker)
+        from sonos_controller import get_now_playing
+        assert get_now_playing("10.0.0.12")["track_id"] == 1440904001
+
+    def test_track_id_is_none_for_non_apple_music(self, mock_speaker):
+        mock_speaker.get_current_transport_info.return_value = {
+            "current_transport_state": "PLAYING"
+        }
+        mock_speaker.get_current_track_info.return_value = {
+            "title": "Some Radio",
+            "artist": "",
+            "album": "",
+            "uri": "x-sonosapi-stream:s23895?sid=254&flags=8232",
+        }
+        from sonos_controller import get_now_playing
+        assert get_now_playing("10.0.0.12")["track_id"] is None
+
+    def test_returns_none_on_exception(self, mock_speaker):
+        mock_speaker.get_current_transport_info.side_effect = Exception("network error")
+        from sonos_controller import get_now_playing
+        assert get_now_playing("10.0.0.12") is None
+
+
 class TestTransport:
     def test_pause_calls_speaker_pause(self, mock_speaker):
         from sonos_controller import pause
