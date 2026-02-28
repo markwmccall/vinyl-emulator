@@ -1,5 +1,14 @@
 # Vinyl Emulator — TODO / Backlog
 
+## 🔴 Top Priority
+
+- [ ] **In-app update system** — Settings page shows current version (`VERSION` constant in `app.py`) and latest GitHub release. If a newer version is available, shows a banner with a one-click "Update" button. Clicking it runs `git pull` + `pip3 install -r requirements.txt` + restarts both systemd services — no SSH required.
+  - Add `VERSION = "0.9.0"` to `app.py`, expose via `/health` response
+  - Add `/update/check` route — hits GitHub releases API, caches result 24h in memory, returns `{"current": "0.9.0", "latest": "1.0.0", "update_available": true}`
+  - Add `/update/apply` POST route — runs `git pull`, `pip3 install`, `systemctl restart vinyl-web vinyl-player`; streams output or returns status
+  - Settings page: show version in footer, update banner when available
+  - Only show update controls in `pn532` mode (on Pi); mock mode shows version only
+
 ## Housekeeping
 
 - [x] Remove unused files
