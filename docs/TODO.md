@@ -2,7 +2,7 @@
 
 ## 🔴 Top Priority
 
-- [ ] **Speaker IP self-healing** — Sonos speakers get their IP from DHCP, which can change after a router reboot or lease renewal. If the IP changes, all playback silently fails. Fix by storing the speaker room name alongside the IP and re-resolving on failure — no DHCP reservation required.
+- [x] **Speaker IP self-healing** — Sonos speakers get their IP from DHCP, which can change after a router reboot or lease renewal. If the IP changes, all playback silently fails. Fix by storing the speaker room name alongside the IP and re-resolving on failure — no DHCP reservation required.
   - Add `speaker_name` to `config.json` (e.g. `"Living Room"`) alongside existing `speaker_ip`
   - Update the Discover button flow (`/discover` route + Settings page) to save `speaker_name` at the same time as `speaker_ip`
   - Add `resolve_speaker(config_path)` to `sonos_controller.py` — returns a `soco.SoCo` instance using the cached `speaker_ip`; on any `SoCoException` or connection error, runs `soco.discover()`, finds the zone matching `speaker_name`, updates `speaker_ip` in `config.json`, and retries once. Raises if retry also fails.
