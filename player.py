@@ -36,13 +36,14 @@ def read_tag_once(config_path=DEFAULT_CONFIG_PATH):
 def run(config_path=DEFAULT_CONFIG_PATH, simulate=None):
     config = _load_config(config_path)
     speaker_ip = config["speaker_ip"]
+    speaker_name = config.get("speaker_name")
     sn = config["sn"]
     nfc_mode = config.get("nfc_mode", "mock")
 
     if simulate is not None:
         tag = parse_tag_data(simulate)
         tracks = get_track(tag["id"]) if tag["type"] == "track" else get_album_tracks(tag["id"])
-        play_album(speaker_ip, tracks, sn)
+        play_album(speaker_ip, tracks, sn, speaker_name=speaker_name, config_path=config_path)
         return
 
     nfc = _make_nfc(nfc_mode)
@@ -52,7 +53,10 @@ def run(config_path=DEFAULT_CONFIG_PATH, simulate=None):
             tag_data = nfc.read_tag()
             tag = parse_tag_data(tag_data)
             tracks = get_track(tag["id"]) if tag["type"] == "track" else get_album_tracks(tag["id"])
-            play_album(speaker_ip, tracks, sn)
+            # Reload config on each tap so a rediscovered IP is used immediately
+            config = _load_config(config_path)
+            play_album(config["speaker_ip"], tracks, config["sn"],
+                       speaker_name=config.get("speaker_name"), config_path=config_path)
             log.info(f"Playing {tag['type']} {tag['id']}")
         except KeyboardInterrupt:
             break

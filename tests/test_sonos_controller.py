@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch, MagicMock
 from apple_music import build_track_uri
 
@@ -191,6 +192,92 @@ class TestTransport:
         from sonos_controller import stop
         stop("10.0.0.12")
         mock_speaker.stop.assert_called_once()
+
+
+class TestSpeakerSelfHealing:
+    """play_album retries with a rediscovered IP when the cached IP fails."""
+
+    def _make_config(self, tmp_path, speaker_ip="10.0.0.12", speaker_name="Living Room"):
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({
+            "speaker_ip": speaker_ip,
+            "speaker_name": speaker_name,
+            "sn": "3",
+            "nfc_mode": "mock",
+        }))
+        return config_file
+
+    def _mock_device(self, name="Living Room", ip="10.0.0.99"):
+        d = MagicMock()
+        d.player_name = name
+        d.ip_address = ip
+        return d
+
+    def test_uses_cached_ip_when_playback_succeeds(self, mocker, tmp_path):
+        from sonos_controller import play_album
+        config_file = self._make_config(tmp_path)
+        mock_discover = mocker.patch("soco.discover")
+        with patch("sonos_controller._lookup_apple_music_udn", return_value=SAMPLE_UDN):
+            play_album("10.0.0.12", SAMPLE_TRACKS, "3",
+                       speaker_name="Living Room", config_path=str(config_file))
+        mock_discover.assert_not_called()
+
+    def test_rediscovers_on_play_failure(self, mocker, tmp_path):
+        from sonos_controller import play_album
+        config_file = self._make_config(tmp_path)
+
+        old_speaker = MagicMock()
+        old_speaker.clear_queue.side_effect = Exception("connection refused")
+        new_speaker = MagicMock()
+        mocker.patch("soco.SoCo", side_effect=[old_speaker, new_speaker])
+        mocker.patch("soco.discover", return_value={self._mock_device()})
+        mocker.patch("sonos_controller._lookup_apple_music_udn", return_value=SAMPLE_UDN)
+
+        play_album("10.0.0.12", SAMPLE_TRACKS, "3",
+                   speaker_name="Living Room", config_path=str(config_file))
+
+        new_speaker.clear_queue.assert_called_once()
+        new_speaker.play_from_queue.assert_called_once_with(0)
+
+    def test_updates_config_ip_after_rediscovery(self, mocker, tmp_path):
+        from sonos_controller import play_album
+        config_file = self._make_config(tmp_path)
+
+        old_speaker = MagicMock()
+        old_speaker.clear_queue.side_effect = Exception("connection refused")
+        new_speaker = MagicMock()
+        mocker.patch("soco.SoCo", side_effect=[old_speaker, new_speaker])
+        mocker.patch("soco.discover", return_value={self._mock_device(ip="10.0.0.99")})
+        mocker.patch("sonos_controller._lookup_apple_music_udn", return_value=SAMPLE_UDN)
+
+        play_album("10.0.0.12", SAMPLE_TRACKS, "3",
+                   speaker_name="Living Room", config_path=str(config_file))
+
+        saved = json.loads(config_file.read_text())
+        assert saved["speaker_ip"] == "10.0.0.99"
+
+    def test_raises_if_speaker_not_found_after_rediscovery(self, mocker, tmp_path):
+        import pytest
+        from sonos_controller import play_album
+        config_file = self._make_config(tmp_path)
+
+        old_speaker = MagicMock()
+        old_speaker.clear_queue.side_effect = Exception("connection refused")
+        mocker.patch("soco.SoCo", return_value=old_speaker)
+        mocker.patch("soco.discover", return_value={self._mock_device(name="Other Room")})
+        mocker.patch("sonos_controller._lookup_apple_music_udn", return_value=SAMPLE_UDN)
+
+        with pytest.raises(Exception, match="Living Room"):
+            play_album("10.0.0.12", SAMPLE_TRACKS, "3",
+                       speaker_name="Living Room", config_path=str(config_file))
+
+    def test_raises_without_rediscovery_if_no_speaker_name(self, mock_speaker, tmp_path):
+        import pytest
+        from sonos_controller import play_album
+        mock_speaker.clear_queue.side_effect = Exception("connection refused")
+
+        with pytest.raises(Exception, match="connection refused"):
+            play_album("10.0.0.12", SAMPLE_TRACKS, "3")
 
 
 class TestGetSpeakers:

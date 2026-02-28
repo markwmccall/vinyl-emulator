@@ -29,10 +29,15 @@
                value="{{ config.speaker_ip }}" placeholder="10.0.0.12">
         <button type="button" id="discover-btn">Discover</button>
       </div>
+      <input type="hidden" id="speaker_name" name="speaker_name"
+             value="{{ config.speaker_name or '' }}">
       <select id="speaker-select" style="display:none">
         <option value="">— select a speaker —</option>
       </select>
-      <span id="discover-status" class="hint"></span>
+      <span id="discover-status" class="hint">
+        {%- if config.speaker_name %} Current: {{ config.speaker_name }}{% endif %}
+        If you rename your speaker in the Sonos app, tap Discover again to update.
+      </span>
     </div>
 
     <div class="field">
@@ -71,7 +76,11 @@
   const discoverBtn = document.getElementById('discover-btn');
   const speakerSelect = document.getElementById('speaker-select');
   const speakerIpInput = document.getElementById('speaker_ip');
+  const speakerNameInput = document.getElementById('speaker_name');
   const discoverStatus = document.getElementById('discover-status');
+
+  // Store speaker name alongside IP so re-discovery can find the speaker if its IP changes
+  let discoveredSpeakers = [];
 
   discoverBtn.addEventListener('click', async () => {
     discoverBtn.disabled = true;
@@ -79,15 +88,15 @@
     speakerSelect.style.display = 'none';
     try {
       const resp = await fetch('/speakers');
-      const speakers = await resp.json();
+      discoveredSpeakers = await resp.json();
       discoverStatus.textContent = '';
-      if (!speakers.length) {
+      if (!discoveredSpeakers.length) {
         discoverStatus.textContent = 'No speakers found.';
         discoverBtn.disabled = false;
         return;
       }
       speakerSelect.innerHTML = '<option value="">— select a speaker —</option>' +
-        speakers.map(s => `<option value="${s.ip}">${s.name} (${s.ip})</option>`).join('');
+        discoveredSpeakers.map(s => `<option value="${s.ip}">${s.name} (${s.ip})</option>`).join('');
       speakerSelect.style.display = 'block';
       discoverBtn.disabled = false;
     } catch (e) {
@@ -121,8 +130,10 @@
   });
 
   speakerSelect.addEventListener('change', () => {
-    if (speakerSelect.value) {
-      speakerIpInput.value = speakerSelect.value;
+    const selected = discoveredSpeakers.find(s => s.ip === speakerSelect.value);
+    if (selected) {
+      speakerIpInput.value = selected.ip;
+      speakerNameInput.value = selected.name;
     }
   });
 

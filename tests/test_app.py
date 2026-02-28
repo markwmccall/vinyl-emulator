@@ -1,6 +1,6 @@
 import json
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import ANY, patch, MagicMock
 
 
 SAMPLE_ALBUMS = [
@@ -209,14 +209,16 @@ class TestPlay:
              patch("app.play_album") as mock_play:
             resp = client.post("/play", json={"album_id": "1440903625"})
         assert resp.status_code == 200
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3")
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3",
+                                          speaker_name="Family Room", config_path=ANY)
 
     def test_plays_track(self, client, temp_config):
         with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK), \
              patch("app.play_album") as mock_play:
             resp = client.post("/play", json={"track_id": "1440904001"})
         assert resp.status_code == 200
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_SINGLE_TRACK, "3")
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_SINGLE_TRACK, "3",
+                                          speaker_name="Family Room", config_path=ANY)
 
     def test_returns_ok(self, client, temp_config):
         with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
@@ -466,19 +468,19 @@ class TestTransport:
         with patch("app.pause") as mock_pause:
             resp = client.post("/transport", json={"action": "pause"})
         assert resp.status_code == 200
-        mock_pause.assert_called_once_with("10.0.0.12")
+        mock_pause.assert_called_once_with("10.0.0.12", speaker_name="Family Room", config_path=ANY)
 
     def test_resume_action(self, client, temp_config):
         with patch("app.resume") as mock_resume:
             resp = client.post("/transport", json={"action": "resume"})
         assert resp.status_code == 200
-        mock_resume.assert_called_once_with("10.0.0.12")
+        mock_resume.assert_called_once_with("10.0.0.12", speaker_name="Family Room", config_path=ANY)
 
     def test_stop_action(self, client, temp_config):
         with patch("app.stop") as mock_stop:
             resp = client.post("/transport", json={"action": "stop"})
         assert resp.status_code == 200
-        mock_stop.assert_called_once_with("10.0.0.12")
+        mock_stop.assert_called_once_with("10.0.0.12", speaker_name="Family Room", config_path=ANY)
 
     def test_invalid_action_returns_400(self, client):
         resp = client.post("/transport", json={"action": "rewind"})
@@ -498,14 +500,16 @@ class TestPlayTag:
              patch("app.play_album") as mock_play:
             resp = client.post("/play/tag", json={"tag": "apple:1440903625"})
         assert resp.status_code == 200
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3")
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3",
+                                          speaker_name="Family Room", config_path=ANY)
 
     def test_plays_track_tag(self, client, temp_config):
         with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK), \
              patch("app.play_album") as mock_play:
             resp = client.post("/play/tag", json={"tag": "apple:track:1440904001"})
         assert resp.status_code == 200
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_SINGLE_TRACK, "3")
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_SINGLE_TRACK, "3",
+                                          speaker_name="Family Room", config_path=ANY)
 
     def test_invalid_tag_returns_400(self, client, temp_config):
         resp = client.post("/play/tag", json={"tag": "notvalid"})

@@ -1,5 +1,6 @@
 {
   "speaker_ip": "10.0.0.12",
+  "speaker_name": "Living Room",
   "sn": "3",
   "nfc_mode": "mock"
 }

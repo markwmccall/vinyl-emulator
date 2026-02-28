@@ -1,4 +1,5 @@
 import html
+import json
 import re
 import xml.sax.saxutils as saxutils
 import soco
@@ -10,6 +11,25 @@ _APPLE_MUSIC_SERVICE_TYPE = "52231"  # = 204 * 256 + 7
 def get_speakers():
     devices = soco.discover() or []
     return [{"name": d.player_name, "ip": d.ip_address} for d in devices]
+
+
+def _rediscover_speaker(speaker_name, config_path):
+    """Find speaker by room name via multicast discovery, update speaker_ip in
+    config.json, and return the new IP address.
+
+    Called automatically when a Sonos operation fails — handles the case where
+    DHCP assigned a new IP to the speaker since it was last saved in config.
+    """
+    devices = soco.discover() or set()
+    for d in devices:
+        if d.player_name == speaker_name:
+            with open(config_path) as f:
+                config = json.load(f)
+            config["speaker_ip"] = d.ip_address
+            with open(config_path, "w") as f:
+                json.dump(config, f, indent=2)
+            return d.ip_address
+    raise Exception(f"Speaker '{speaker_name}' not found on network")
 
 
 def _lookup_apple_music_udn(speaker, sn):
@@ -127,22 +147,40 @@ def get_now_playing(speaker_ip):
         return None
 
 
-def pause(speaker_ip):
-    soco.SoCo(speaker_ip).pause()
+def pause(speaker_ip, speaker_name=None, config_path=None):
+    try:
+        soco.SoCo(speaker_ip).pause()
+    except Exception:
+        if speaker_name and config_path:
+            new_ip = _rediscover_speaker(speaker_name, config_path)
+            soco.SoCo(new_ip).pause()
+        else:
+            raise
 
 
-def resume(speaker_ip):
-    soco.SoCo(speaker_ip).play()
+def resume(speaker_ip, speaker_name=None, config_path=None):
+    try:
+        soco.SoCo(speaker_ip).play()
+    except Exception:
+        if speaker_name and config_path:
+            new_ip = _rediscover_speaker(speaker_name, config_path)
+            soco.SoCo(new_ip).play()
+        else:
+            raise
 
 
-def stop(speaker_ip):
-    soco.SoCo(speaker_ip).stop()
+def stop(speaker_ip, speaker_name=None, config_path=None):
+    try:
+        soco.SoCo(speaker_ip).stop()
+    except Exception:
+        if speaker_name and config_path:
+            new_ip = _rediscover_speaker(speaker_name, config_path)
+            soco.SoCo(new_ip).stop()
+        else:
+            raise
 
 
-def play_album(speaker_ip, track_dicts, sn):
-    if not track_dicts:
-        return
-    speaker = soco.SoCo(speaker_ip)
+def _do_play_album(speaker, track_dicts, sn):
     udn = _lookup_apple_music_udn(speaker, sn)
     speaker.clear_queue()
     for track in track_dicts:
@@ -156,3 +194,16 @@ def play_album(speaker_ip, track_dicts, sn):
             ("EnqueueAsNext", 0),
         ])
     speaker.play_from_queue(0)
+
+
+def play_album(speaker_ip, track_dicts, sn, speaker_name=None, config_path=None):
+    if not track_dicts:
+        return
+    try:
+        _do_play_album(soco.SoCo(speaker_ip), track_dicts, sn)
+    except Exception:
+        if speaker_name and config_path:
+            new_ip = _rediscover_speaker(speaker_name, config_path)
+            _do_play_album(soco.SoCo(new_ip), track_dicts, sn)
+        else:
+            raise

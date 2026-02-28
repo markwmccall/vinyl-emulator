@@ -116,6 +116,7 @@ def temp_config(tmp_path, monkeypatch):
     config_file.write_text(json.dumps({
         "sn": "3",
         "speaker_ip": "10.0.0.12",
+        "speaker_name": "Family Room",
         "nfc_mode": "mock"
     }))
     import app

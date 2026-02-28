@@ -145,7 +145,8 @@ def play():
         tracks = apple_music.get_track(data["track_id"])
     else:
         tracks = apple_music.get_album_tracks(data["album_id"])
-    play_album(config["speaker_ip"], tracks, config["sn"])
+    play_album(config["speaker_ip"], tracks, config["sn"],
+               speaker_name=config.get("speaker_name"), config_path=CONFIG_PATH)
     return jsonify({"status": "ok"})
 
 
@@ -156,6 +157,7 @@ def settings():
     if request.method == "POST":
         config["sn"] = request.form.get("sn", config["sn"])
         config["speaker_ip"] = request.form.get("speaker_ip", config["speaker_ip"])
+        config["speaker_name"] = request.form.get("speaker_name", config.get("speaker_name", ""))
         config["nfc_mode"] = request.form.get("nfc_mode", config["nfc_mode"])
         with open(CONFIG_PATH, "w") as f:
             json.dump(config, f, indent=2)
@@ -263,12 +265,13 @@ def transport():
     if action not in ("pause", "resume", "stop"):
         return jsonify({"error": "invalid action"}), 400
     config = _load_config()
+    name = config.get("speaker_name")
     if action == "pause":
-        pause(config["speaker_ip"])
+        pause(config["speaker_ip"], speaker_name=name, config_path=CONFIG_PATH)
     elif action == "resume":
-        resume(config["speaker_ip"])
+        resume(config["speaker_ip"], speaker_name=name, config_path=CONFIG_PATH)
     else:
-        stop(config["speaker_ip"])
+        stop(config["speaker_ip"], speaker_name=name, config_path=CONFIG_PATH)
     return jsonify({"status": "ok", "action": action})
 
 
@@ -287,7 +290,8 @@ def play_tag():
         tracks = apple_music.get_track(tag["id"])
     else:
         tracks = apple_music.get_album_tracks(tag["id"])
-    play_album(config["speaker_ip"], tracks, config["sn"])
+    play_album(config["speaker_ip"], tracks, config["sn"],
+               speaker_name=config.get("speaker_name"), config_path=CONFIG_PATH)
     return jsonify({"status": "ok"})
 
 

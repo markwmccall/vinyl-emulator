@@ -1,11 +1,12 @@
 import json
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import ANY, patch, MagicMock
 
 
 SAMPLE_CONFIG = {
     "sn": "3",
     "speaker_ip": "10.0.0.12",
+    "speaker_name": "Family Room",
     "nfc_mode": "mock",
 }
 
@@ -28,7 +29,8 @@ class TestSimulateMode:
              patch("player.play_album") as mock_play:
             run(config_path=config_file, simulate="apple:1440903625")
         mock_tracks.assert_called_once_with("1440903625")
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3")
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3",
+                                          speaker_name="Family Room", config_path=ANY)
 
     def test_simulate_plays_track(self, config_file):
         from player import run
@@ -36,7 +38,8 @@ class TestSimulateMode:
              patch("player.play_album") as mock_play:
             run(config_path=config_file, simulate="apple:track:1440904001")
         mock_track.assert_called_once_with("1440904001")
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3")
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3",
+                                          speaker_name="Family Room", config_path=ANY)
 
     def test_simulate_exits_after_one_play(self, config_file):
         from player import run
@@ -60,7 +63,8 @@ class TestLoopMode:
              patch("player.get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("player.play_album") as mock_play:
             run(config_path=config_file)
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3")
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3",
+                                          speaker_name="Family Room", config_path=ANY)
 
     def test_loop_continues_after_bad_tag(self, config_file):
         from player import run
@@ -70,7 +74,8 @@ class TestLoopMode:
              patch("player.get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("player.play_album") as mock_play:
             run(config_path=config_file)
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3")
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3",
+                                          speaker_name="Family Room", config_path=ANY)
 
     def test_loop_continues_after_playback_error(self, config_file):
         from player import run
