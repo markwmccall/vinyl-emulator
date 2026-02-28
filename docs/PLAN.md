@@ -7,11 +7,11 @@
 | 1 | Core playback (apple_music + sonos_controller) | ✅ Done |
 | 2 | NFC interface + player.py loop | ✅ Done |
 | 3 | Flask web UI (search, album, track, verify, settings) | ✅ Done |
-| 4 | Hardware procurement + Pi OS setup | ⏳ Not started |
-| 5 | Deploy to Pi + implement PN532NFC | ⏳ Not started |
-| 6 | systemd production services | ⏳ Not started |
+| 4 | Hardware procurement + Pi OS setup | ✅ Done |
+| 5 | Deploy to Pi + implement PN532NFC | ⏳ Waiting on NFC HAT |
+| 6 | systemd production services | ✅ Done |
 
-**Current test count: 80 tests, all passing.**
+**Current test count: 139 tests, all passing.**
 
 ---
 
@@ -80,12 +80,13 @@ vinyl-emulator/
 ├── player.py             # Main loop — uses nfc_interface; --simulate, --read flags
 ├── app.py                # Flask web UI
 ├── templates/
-│   ├── base.html         # Shared layout (nav: Search, Verify Tag, Settings)
-│   ├── index.html        # Album/song search with tab toggle
+│   ├── base.html         # Shared layout (nav: Search, Collection, Verify Tag, Settings) + Now Playing bar
+│   ├── index.html        # Album/song search with tab toggle + clear button
 │   ├── album.html        # Album detail + track listing (linked) + write/play buttons
-│   ├── track.html        # Single track detail + write/play buttons
+│   ├── track.html        # Single track detail + write/play buttons + album link
 │   ├── verify.html       # Tag verify page (mock: text input; pn532: tap button)
-│   └── settings.html     # Speaker IP + sn + NFC mode config
+│   ├── collection.html   # Written tag collection with sort + delete + clear all
+│   └── settings.html     # Speaker IP + sn + NFC mode + player control + URL sticker
 ├── static/
 │   └── style.css
 ├── tests/
@@ -108,6 +109,7 @@ vinyl-emulator/
 ## .gitignore (minimum)
 ```
 config.json
+tags.json
 __pycache__/
 *.pyc
 *.pyo
@@ -166,14 +168,16 @@ Raises `ValueError` with a clear message if format is unrecognised.
 - `apple:{id}` → `{"type": "album", "id": "{id}"}`
 - `apple:track:{id}` → `{"type": "track", "id": "{id}"}`
 
-**MockNFC** (Mac testing):
+**MockNFC** (no hardware):
 - `read_tag()` → blocks on `input()` waiting for a typed tag string
 - `write_tag(data)` → prints what would be written, returns `True`
+- `write_url_tag(url)` → prints what URL would be written, returns `True`
 
 **PN532NFC** (Pi with real hardware):
 - `read_tag()` → polls Adafruit PN532 library for NDEF tag (Phase 5)
 - `write_tag(data)` → writes NDEF text record to physical tag (Phase 5)
-- Both raise `NotImplementedError` until Phase 5
+- `write_url_tag(url)` → writes URL NDEF record to physical tag (Phase 5)
+- All raise `NotImplementedError` until Phase 5
 
 ---
 
@@ -369,10 +373,21 @@ Steps:
 
 ## requirements.txt
 ```
-soco
-flask
-pytest
-pytest-mock
-# Pi only — install separately after cloning:
-# pip3 install adafruit-circuitpython-pn532 RPi.GPIO spidev
+flask>=3.1.3
+soco>=0.30.14
+requests>=2.32.5
+```
+
+## requirements-dev.txt
+```
+-r requirements.txt
+pytest>=8.4.2
+pytest-mock>=3.15.1
+```
+
+Pi-only dependencies (installed by setup.sh, not in requirements.txt):
+```
+adafruit-circuitpython-pn532
+RPi.GPIO
+spidev
 ```
