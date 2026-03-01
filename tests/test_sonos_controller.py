@@ -216,6 +216,7 @@ class TestSpeakerSelfHealing:
     def test_uses_cached_ip_when_playback_succeeds(self, mocker, tmp_path):
         from sonos_controller import play_album
         config_file = self._make_config(tmp_path)
+        mocker.patch("soco.SoCo", return_value=MagicMock())
         mock_discover = mocker.patch("soco.discover")
         with patch("sonos_controller._lookup_apple_music_udn", return_value=SAMPLE_UDN):
             play_album("10.0.0.12", SAMPLE_TRACKS, "3",
