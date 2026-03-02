@@ -70,6 +70,35 @@ jobs:
               n = d['passed'] + d['failed'] + d['skipped']
               lines.append(f"| `{mod}` | {n} | {d['passed']} | {d['failed']} | {d['skipped']} | {d['time']:.2f}s |")
 
+          # Coverage section
+          import os.path
+          if os.path.exists('coverage.xml'):
+              cov_tree = ET.parse('coverage.xml')
+              file_rows = []
+              total_cov = total_all = 0
+              for cls in cov_tree.getroot().iter('class'):
+                  fname = cls.get('filename', '')
+                  if not fname or fname.startswith('tests/'):
+                      continue
+                  all_lines = cls.findall('.//line')
+                  n_all = len(all_lines)
+                  n_cov = sum(1 for l in all_lines if int(l.get('hits', 0)) > 0)
+                  total_all += n_all
+                  total_cov += n_cov
+                  rate = n_cov / n_all if n_all else 1.0
+                  badge = '✅' if rate >= 0.9 else ('⚠️' if rate >= 0.7 else '❌')
+                  file_rows.append((fname, n_cov, n_all, rate, badge))
+              file_rows.sort(key=lambda x: x[0])
+              overall = total_cov / total_all if total_all else 1.0
+              lines += [
+                  '',
+                  f'## 📊 Coverage — {overall:.0%} overall\n',
+                  '| File | Coverage | Lines |',
+                  '|------|:--------:|------:|',
+              ]
+              for fname, n_cov, n_all, rate, badge in file_rows:
+                  lines.append(f'| `{fname}` | {badge} {rate:.0%} | {n_cov}/{n_all} |')
+
           path = os.environ.get('GITHUB_STEP_SUMMARY')
           if path:
               with open(path, 'a') as f:
