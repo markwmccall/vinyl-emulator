@@ -19,6 +19,11 @@
         </button>
       </div>
       <p id="action-status" class="write-status"></p>
+      <div id="write-confirm" class="write-confirm" style="display:none">
+        <span id="write-confirm-msg"></span>
+        <button id="write-confirm-yes" class="write-confirm-yes">Overwrite</button>
+        <button id="write-confirm-no" class="write-confirm-no">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -71,9 +76,56 @@
       () => { window.refreshNowPlaying && window.refreshNowPlaying(); return '✓ Playing on Sonos'; });
   });
 
+  async function writeTag(body) {
+    const btn = document.getElementById('write-btn');
+    const confirmBox = document.getElementById('write-confirm');
+    btn.disabled = true;
+    btn.textContent = 'Writing…';
+    status.textContent = '';
+    status.className = 'write-status';
+    confirmBox.style.display = 'none';
+    try {
+      const resp = await fetch('/write-tag', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      btn.textContent = 'Write to Tag';
+      btn.disabled = false;
+      if (!resp.ok) {
+        status.textContent = data.error || 'Something went wrong.';
+        status.className = 'write-status error';
+        return;
+      }
+      if (data.status === 'confirm') {
+        document.getElementById('write-confirm-msg').textContent =
+          'Tag already has: ' + data.existing_display;
+        confirmBox.style.display = 'flex';
+        return;
+      }
+      status.textContent = '✓ Written: ' + data.written;
+      status.className = 'write-status success';
+    } catch (e) {
+      console.error('Write tag error:', e);
+      btn.textContent = 'Write to Tag';
+      btn.disabled = false;
+      status.textContent = 'Network error — is the server running?';
+      status.className = 'write-status error';
+    }
+  }
+
   document.getElementById('write-btn').addEventListener('click', function() {
-    postAction('/write-tag', {album_id: this.dataset.albumId}, this, 'Writing…', 'Write to Tag',
-      data => '✓ Written: ' + data.written);
+    writeTag({album_id: this.dataset.albumId});
+  });
+
+  document.getElementById('write-confirm-yes').addEventListener('click', function() {
+    document.getElementById('write-confirm').style.display = 'none';
+    writeTag({album_id: document.getElementById('write-btn').dataset.albumId, force: true});
+  });
+
+  document.getElementById('write-confirm-no').addEventListener('click', function() {
+    document.getElementById('write-confirm').style.display = 'none';
   });
 </script>
 {% endblock %}

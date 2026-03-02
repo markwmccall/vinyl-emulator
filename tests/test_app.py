@@ -171,6 +171,83 @@ class TestWriteTag:
         assert resp.status_code == 400
 
 
+class TestWriteTagPN532:
+    """Two-step write-tag flow tests using pn532 mode."""
+
+    def _pn532_config(self, tmp_path, monkeypatch):
+        import app, json
+        config_file = tmp_path / "config_pn532.json"
+        config_file.write_text(json.dumps({
+            "sn": "3", "speaker_ip": "10.0.0.12",
+            "speaker_name": "Family Room", "nfc_mode": "pn532",
+        }))
+        monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        monkeypatch.setattr(app, "TAGS_PATH", str(tmp_path / "tags.json"))
+        return config_file
+
+    def test_blank_tag_writes_immediately(self, client, tmp_path, monkeypatch):
+        self._pn532_config(tmp_path, monkeypatch)
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = None
+        with patch("app.PN532NFC", return_value=mock_nfc):
+            resp = client.post("/write-tag", json={"album_id": "1440903625"})
+        assert resp.status_code == 200
+        assert resp.get_json()["status"] == "ok"
+        mock_nfc.write_tag.assert_called_once_with("apple:1440903625")
+
+    def test_existing_tag_returns_confirm(self, client, tmp_path, monkeypatch):
+        self._pn532_config(tmp_path, monkeypatch)
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = "apple:9999999"
+        with patch("app.PN532NFC", return_value=mock_nfc), \
+             patch("app._format_existing_tag", return_value="Some Album by Some Artist"):
+            resp = client.post("/write-tag", json={"album_id": "1440903625"})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["status"] == "confirm"
+        assert data["existing"] == "apple:9999999"
+        mock_nfc.write_tag.assert_not_called()
+
+    def test_confirm_contains_existing_display(self, client, tmp_path, monkeypatch):
+        self._pn532_config(tmp_path, monkeypatch)
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = "apple:9999999"
+        with patch("app.PN532NFC", return_value=mock_nfc), \
+             patch("app._format_existing_tag", return_value="Hysteria by Def Leppard"):
+            resp = client.post("/write-tag", json={"album_id": "1440903625"})
+        assert resp.get_json()["existing_display"] == "Hysteria by Def Leppard"
+
+    def test_existing_unrecognised_tag_shows_raw(self, client, tmp_path, monkeypatch):
+        self._pn532_config(tmp_path, monkeypatch)
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = "spotify:album:abc123"
+        with patch("app.PN532NFC", return_value=mock_nfc):
+            resp = client.post("/write-tag", json={"album_id": "1440903625"})
+        data = resp.get_json()
+        assert data["status"] == "confirm"
+        assert data["existing_display"] == "spotify:album:abc123"
+
+    def test_force_skips_read_and_writes(self, client, tmp_path, monkeypatch):
+        self._pn532_config(tmp_path, monkeypatch)
+        mock_nfc = MagicMock()
+        with patch("app.PN532NFC", return_value=mock_nfc):
+            resp = client.post("/write-tag", json={"album_id": "1440903625", "force": True})
+        assert resp.status_code == 200
+        assert resp.get_json()["status"] == "ok"
+        mock_nfc.read_tag.assert_not_called()
+        mock_nfc.write_tag.assert_called_once_with("apple:1440903625")
+
+    def test_locked_tag_returns_409(self, client, tmp_path, monkeypatch):
+        self._pn532_config(tmp_path, monkeypatch)
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = None
+        mock_nfc.write_tag.side_effect = IOError("Tag is read-only (locked)")
+        with patch("app.PN532NFC", return_value=mock_nfc):
+            resp = client.post("/write-tag", json={"album_id": "1440903625"})
+        assert resp.status_code == 409
+        assert "locked" in resp.get_json()["error"]
+
+
 class TestWriteUrlTag:
     def test_calls_write_url_tag(self, client, temp_config):
         mock_nfc = MagicMock()

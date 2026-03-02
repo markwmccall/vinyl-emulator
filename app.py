@@ -51,8 +51,50 @@ def _record_tag(tag_string, tag_type, name, artist, artwork_url, album_id=None, 
 
 def _make_nfc(config):
     if config.get("nfc_mode") == "pn532":
-        return PN532NFC()
+        try:
+            return PN532NFC()
+        except ImportError:
+            raise RuntimeError(
+                "PN532 hardware libraries not installed — "
+                "run setup.sh on a Raspberry Pi to install them"
+            )
     return MockNFC()
+
+
+def _format_existing_tag(tag_string):
+    """Return human-readable display name for an existing tag, or raw string if unrecognised."""
+    try:
+        tag = parse_tag_data(tag_string)
+    except ValueError:
+        return tag_string
+    try:
+        if tag["type"] == "track":
+            tracks = apple_music.get_track(tag["id"])
+            if tracks:
+                return f"{tracks[0]['name']} by {tracks[0]['artist']}"
+        else:
+            tracks = apple_music.get_album_tracks(tag["id"])
+            if tracks:
+                return f"{tracks[0]['album']} by {tracks[0]['artist']}"
+    except Exception:
+        pass
+    return tag_string
+
+
+def _do_record_tag(tag_data, data):
+    if "track_id" in data:
+        tracks = apple_music.get_track(data["track_id"])
+        if tracks:
+            t = tracks[0]
+            _record_tag(tag_data, "track", t["name"], t["artist"],
+                        t.get("artwork_url", ""), album_id=t.get("album_id"),
+                        track_id=t["track_id"])
+    else:
+        tracks = apple_music.get_album_tracks(data["album_id"])
+        if tracks:
+            t = tracks[0]
+            _record_tag(tag_data, "album", t["album"], t["artist"],
+                        t.get("artwork_url", ""), album_id=data["album_id"])
 
 
 @app.route("/")
@@ -98,26 +140,31 @@ def write_tag():
     if not data or ("track_id" not in data and "album_id" not in data):
         return jsonify({"error": "album_id or track_id required"}), 400
     config = _load_config()
-    nfc = _make_nfc(config)
-    if "track_id" in data:
-        tag_data = f"apple:track:{data['track_id']}"
-    else:
-        tag_data = f"apple:{data['album_id']}"
-    nfc.write_tag(tag_data)
     try:
-        if "track_id" in data:
-            tracks = apple_music.get_track(data["track_id"])
-            if tracks:
-                t = tracks[0]
-                _record_tag(tag_data, "track", t["name"], t["artist"],
-                            t.get("artwork_url", ""), album_id=t.get("album_id"),
-                            track_id=t["track_id"])
-        else:
-            tracks = apple_music.get_album_tracks(data["album_id"])
-            if tracks:
-                t = tracks[0]
-                _record_tag(tag_data, "album", t["album"], t["artist"],
-                            t.get("artwork_url", ""), album_id=data["album_id"])
+        nfc = _make_nfc(config)
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503
+    tag_data = (f"apple:track:{data['track_id']}" if "track_id" in data
+                else f"apple:{data['album_id']}")
+    force = data.get("force", False)
+
+    # Read-before-write check (pn532 mode only; mock mode always writes immediately)
+    if config.get("nfc_mode") == "pn532" and not force:
+        existing = nfc.read_tag()
+        if existing:
+            return jsonify({
+                "status": "confirm",
+                "existing": existing,
+                "existing_display": _format_existing_tag(existing),
+            })
+
+    try:
+        nfc.write_tag(tag_data)
+    except IOError as e:
+        return jsonify({"error": str(e)}), 409
+
+    try:
+        _do_record_tag(tag_data, data)
     except Exception:
         pass
     return jsonify({"status": "ok", "written": tag_data})
@@ -127,7 +174,10 @@ def write_tag():
 def write_url_tag():
     url = request.host_url.rstrip("/")
     config = _load_config()
-    nfc = _make_nfc(config)
+    try:
+        nfc = _make_nfc(config)
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503
     try:
         nfc.write_url_tag(url)
     except NotImplementedError as e:
@@ -175,7 +225,11 @@ def read_tag():
     config = _load_config()
     tag_string = request.args.get("tag")
     if tag_string is None:
-        nfc = _make_nfc(config)
+        try:
+            nfc = _make_nfc(config)
+        except RuntimeError as e:
+            return jsonify({"tag_string": None, "tag_type": None, "content_id": None,
+                            "album": None, "error": str(e)})
         tag_string = nfc.read_tag()
     try:
         tag = parse_tag_data(tag_string)
