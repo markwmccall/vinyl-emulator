@@ -250,7 +250,8 @@ main {
   text-decoration: none;
   display: inline-block;
 }
-.print-btn:hover { background: var(--btn-neutral-hover); }
+.print-btn:hover:not(:disabled) { background: var(--btn-neutral-hover); }
+.print-btn:disabled { background: var(--btn-disabled); cursor: default; opacity: 0.6; }
 
 .pause-btn {
   background: var(--btn-neutral);
@@ -495,10 +496,12 @@ a.track-name:hover { color: #fff; text-decoration: underline; }
 /* Collection page */
 .collection-page h1 { font-size: 1.6rem; margin-bottom: 1.25rem; }
 .tag-count { font-size: 1rem; font-weight: 400; color: var(--text-3); }
+.collection-search { width: 100%; background: var(--surface-input); border: 1px solid var(--border-input); color: var(--text); padding: 0.5rem 0.75rem; border-radius: var(--radius); font-size: 0.9rem; margin-bottom: 1rem; }
+.collection-search:focus { outline: none; border-color: var(--border-focus); }
 .collection-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; }
 .collection-controls { display: flex; align-items: center; gap: 0.75rem; }
 .sort-select { background: var(--surface-input); border: 1px solid var(--border-input); color: var(--text); padding: 0.4rem 0.6rem; border-radius: var(--radius); font-size: 0.88rem; cursor: pointer; }
-.clear-all-btn { background: none; border: 1px solid var(--border-strong); color: var(--text-2); padding: 0.4rem 0.75rem; border-radius: var(--radius); font-size: 0.88rem; cursor: pointer; transition: all 0.15s; }
+.clear-all-btn { background: none; border: 1px solid var(--border-strong); color: var(--text-2); padding: var(--btn-padding); border-radius: var(--radius); font-size: var(--btn-font); font-weight: 600; cursor: pointer; transition: all 0.15s; }
 .clear-all-btn:hover { border-color: var(--border-focus); color: var(--text); }
 .clear-all-btn.confirm { border-color: #c0392b; color: var(--destructive-text); }
 .tag-list { list-style: none; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; }
