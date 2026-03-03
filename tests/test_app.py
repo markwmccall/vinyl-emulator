@@ -4,27 +4,27 @@ from unittest.mock import ANY, patch, MagicMock
 
 
 SAMPLE_ALBUMS = [
-    {"id": 1440903625, "name": "Hysteria", "artist": "Def Leppard",
+    {"id": 1440903625, "name": "Test Album", "artist": "Test Artist",
      "artwork_url": "https://example.com/600x600bb.jpg"},
 ]
 
 SAMPLE_SONGS = [
-    {"id": 1440904001, "name": "Women", "artist": "Def Leppard",
-     "album": "Hysteria", "artwork_url": "https://example.com/600x600bb.jpg"},
+    {"id": 1440904001, "name": "Track One", "artist": "Test Artist",
+     "album": "Test Album", "artwork_url": "https://example.com/600x600bb.jpg"},
 ]
 
 SAMPLE_TRACKS = [
-    {"track_id": 1440904001, "name": "Women", "track_number": 1,
-     "artist": "Def Leppard", "album": "Hysteria",
+    {"track_id": 1440904001, "name": "Track One", "track_number": 1,
+     "artist": "Test Artist", "album": "Test Album",
      "artwork_url": "https://example.com/600x600bb.jpg"},
-    {"track_id": 1440904002, "name": "Rocket", "track_number": 2,
-     "artist": "Def Leppard", "album": "Hysteria",
+    {"track_id": 1440904002, "name": "Track Two", "track_number": 2,
+     "artist": "Test Artist", "album": "Test Album",
      "artwork_url": "https://example.com/600x600bb.jpg"},
 ]
 
 SAMPLE_SINGLE_TRACK = [
-    {"track_id": 1440904001, "name": "Women", "track_number": 1,
-     "artist": "Def Leppard", "album": "Hysteria",
+    {"track_id": 1440904001, "name": "Track One", "track_number": 1,
+     "artist": "Test Artist", "album": "Test Album",
      "artwork_url": "https://example.com/600x600bb.jpg"},
 ]
 
@@ -42,21 +42,21 @@ class TestIndex:
 class TestSearch:
     def test_returns_json_albums(self, client):
         with patch("app.apple_music.search_albums", return_value=SAMPLE_ALBUMS):
-            resp = client.get("/search?q=Hysteria")
+            resp = client.get("/search?q=Test Album")
         assert resp.status_code == 200
         data = resp.get_json()
         assert len(data) == 1
-        assert data[0]["name"] == "Hysteria"
-        assert data[0]["artist"] == "Def Leppard"
+        assert data[0]["name"] == "Test Album"
+        assert data[0]["artist"] == "Test Artist"
 
     def test_song_search_returns_songs(self, client):
         with patch("app.apple_music.search_songs", return_value=SAMPLE_SONGS):
-            resp = client.get("/search?q=Women&type=song")
+            resp = client.get("/search?q=Track+One&type=song")
         assert resp.status_code == 200
         data = resp.get_json()
         assert len(data) == 1
-        assert data[0]["name"] == "Women"
-        assert data[0]["album"] == "Hysteria"
+        assert data[0]["name"] == "Track One"
+        assert data[0]["album"] == "Test Album"
 
     def test_empty_query_returns_empty_list(self, client):
         resp = client.get("/search?q=")
@@ -78,8 +78,8 @@ class TestAlbum:
     def test_renders_track_names(self, client):
         with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/album/1440903625")
-        assert b"Women" in resp.data
-        assert b"Rocket" in resp.data
+        assert b"Track One" in resp.data
+        assert b"Track Two" in resp.data
 
     def test_track_names_are_linked(self, client):
         with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
@@ -90,8 +90,8 @@ class TestAlbum:
     def test_renders_album_and_artist(self, client):
         with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/album/1440903625")
-        assert b"Hysteria" in resp.data
-        assert b"Def Leppard" in resp.data
+        assert b"Test Album" in resp.data
+        assert b"Test Artist" in resp.data
 
     def test_unknown_album_returns_404(self, client):
         with patch("app.apple_music.get_album_tracks", return_value=[]):
@@ -108,13 +108,13 @@ class TestTrack:
     def test_renders_track_name(self, client):
         with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
             resp = client.get("/track/1440904001")
-        assert b"Women" in resp.data
+        assert b"Track One" in resp.data
 
     def test_renders_artist_and_album(self, client):
         with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
             resp = client.get("/track/1440904001")
-        assert b"Def Leppard" in resp.data
-        assert b"Hysteria" in resp.data
+        assert b"Test Artist" in resp.data
+        assert b"Test Album" in resp.data
 
     def test_shows_tag_string(self, client):
         with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
@@ -213,9 +213,9 @@ class TestWriteTagPN532:
         mock_nfc = MagicMock()
         mock_nfc.read_tag.return_value = "apple:9999999"
         with patch("app.PN532NFC", return_value=mock_nfc), \
-             patch("app._format_existing_tag", return_value="Hysteria by Def Leppard"):
+             patch("app._format_existing_tag", return_value="Test Album by Test Artist"):
             resp = client.post("/write-tag", json={"album_id": "1440903625"})
-        assert resp.get_json()["existing_display"] == "Hysteria by Def Leppard"
+        assert resp.get_json()["existing_display"] == "Test Album by Test Artist"
 
     def test_existing_unrecognised_tag_shows_raw(self, client, tmp_path, monkeypatch):
         self._pn532_config(tmp_path, monkeypatch)
@@ -392,8 +392,8 @@ class TestReadTag:
              patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/read-tag")
         data = resp.get_json()
-        assert data["album"]["name"] == "Hysteria"
-        assert data["album"]["artist"] == "Def Leppard"
+        assert data["album"]["name"] == "Test Album"
+        assert data["album"]["artist"] == "Test Artist"
         assert "artwork_url" in data["album"]
 
     def test_invalid_tag_returns_error(self, client, temp_config):
@@ -516,11 +516,11 @@ class TestNowPlaying:
 
     def test_returns_album_id_for_apple_music_track(self, client, temp_config):
         with patch("app.get_now_playing", return_value={
-            "title": "Women", "artist": "Def Leppard", "album": "Hysteria",
+            "title": "Track One", "artist": "Test Artist", "album": "Test Album",
             "track_id": 1440904001, "paused": False,
         }), patch("app.apple_music.get_track", return_value=[{
-            "track_id": 1440904001, "name": "Women", "track_number": 1,
-            "artist": "Def Leppard", "album": "Hysteria",
+            "track_id": 1440904001, "name": "Track One", "track_number": 1,
+            "artist": "Test Artist", "album": "Test Album",
             "album_id": 1440903625,
             "artwork_url": "https://example.com/600x600bb.jpg",
         }]):
@@ -634,8 +634,8 @@ class TestCollection:
         import app
         tags_file = tmp_path / "tags.json"
         tags_file.write_text(json.dumps([
-            {"tag_string": "apple:1440903625", "type": "album", "name": "Hysteria",
-             "artist": "Def Leppard", "artwork_url": "", "album_id": 1440903625,
+            {"tag_string": "apple:1440903625", "type": "album", "name": "Test Album",
+             "artist": "Test Artist", "artwork_url": "", "album_id": 1440903625,
              "track_id": None, "written_at": "2026-02-28T12:00:00"},
         ]))
         monkeypatch.setattr(app, "TAGS_PATH", str(tags_file))
@@ -653,8 +653,8 @@ class TestCollection:
         import app
         tags_file = tmp_path / "tags.json"
         tags_file.write_text(json.dumps([
-            {"tag_string": "apple:1440903625", "type": "album", "name": "Hysteria",
-             "artist": "Def Leppard", "artwork_url": "", "album_id": 1440903625,
+            {"tag_string": "apple:1440903625", "type": "album", "name": "Test Album",
+             "artist": "Test Artist", "artwork_url": "", "album_id": 1440903625,
              "track_id": None, "written_at": "2026-02-28T12:00:00"},
         ]))
         monkeypatch.setattr(app, "TAGS_PATH", str(tags_file))
@@ -688,21 +688,21 @@ class TestCollection:
 
 
 class TestFormatExistingTag:
-    SAMPLE_TRACK = [{"track_id": 1440904001, "name": "Women", "artist": "Def Leppard",
-                     "album": "Hysteria", "artwork_url": "https://example.com/art.jpg"}]
-    SAMPLE_TRACKS = [{"track_id": 1440904001, "name": "Women", "track_number": 1,
-                      "artist": "Def Leppard", "album": "Hysteria",
+    SAMPLE_TRACK = [{"track_id": 1440904001, "name": "Track One", "artist": "Test Artist",
+                     "album": "Test Album", "artwork_url": "https://example.com/art.jpg"}]
+    SAMPLE_TRACKS = [{"track_id": 1440904001, "name": "Track One", "track_number": 1,
+                      "artist": "Test Artist", "album": "Test Album",
                       "artwork_url": "https://example.com/art.jpg"}]
 
     def test_track_tag_returns_name_and_artist(self):
         from app import _format_existing_tag
         with patch("app.apple_music.get_track", return_value=self.SAMPLE_TRACK):
-            assert _format_existing_tag("apple:track:1440904001") == "Women by Def Leppard"
+            assert _format_existing_tag("apple:track:1440904001") == "Track One by Test Artist"
 
     def test_album_tag_returns_album_and_artist(self):
         from app import _format_existing_tag
         with patch("app.apple_music.get_album_tracks", return_value=self.SAMPLE_TRACKS):
-            assert _format_existing_tag("apple:1440903625") == "Hysteria by Def Leppard"
+            assert _format_existing_tag("apple:1440903625") == "Test Album by Test Artist"
 
     def test_empty_track_results_returns_raw_string(self):
         from app import _format_existing_tag

@@ -10,8 +10,8 @@ SAMPLE_CONFIG = {
     "nfc_mode": "mock",
 }
 
-SAMPLE_TRACKS = [{"track_id": 1440904001, "name": "Women", "track_number": 1,
-                  "artist": "Def Leppard", "album": "Hysteria",
+SAMPLE_TRACKS = [{"track_id": 1440904001, "name": "Track One", "track_number": 1,
+                  "artist": "Test Artist", "album": "Test Album",
                   "artwork_url": "https://example.com/600x600bb.jpg"}]
 
 

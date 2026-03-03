@@ -7,18 +7,18 @@ SAMPLE_UDN = "SA_RINCON52231_X_#Svc52231-f7c0f087-Token"
 SAMPLE_TRACKS = [
     {
         "track_id": 1440904001,
-        "name": "Women",
+        "name": "Track One",
         "track_number": 1,
-        "artist": "Def Leppard",
-        "album": "Hysteria",
+        "artist": "Test Artist",
+        "album": "Test Album",
         "artwork_url": "https://example.com/600x600bb.jpg",
     },
     {
         "track_id": 1440904002,
-        "name": "Rocket",
+        "name": "Track Two",
         "track_number": 2,
-        "artist": "Def Leppard",
-        "album": "Hysteria",
+        "artist": "Test Artist",
+        "album": "Test Album",
         "artwork_url": "https://example.com/600x600bb.jpg",
     },
 ]
@@ -50,13 +50,13 @@ class TestPlayAlbum:
 
         uri0, meta0 = _get_enqueued(mock_speaker, 0)
         assert uri0 == build_track_uri(SAMPLE_TRACKS[0]["track_id"], "3")
-        assert "<dc:title>Women</dc:title>" in meta0
+        assert "<dc:title>Track One</dc:title>" in meta0
         assert f"10032028song%3a{SAMPLE_TRACKS[0]['track_id']}" in meta0
         assert SAMPLE_UDN in meta0
 
         uri1, meta1 = _get_enqueued(mock_speaker, 1)
         assert uri1 == build_track_uri(SAMPLE_TRACKS[1]["track_id"], "3")
-        assert "<dc:title>Rocket</dc:title>" in meta1
+        assert "<dc:title>Track Two</dc:title>" in meta1
         assert f"10032028song%3a{SAMPLE_TRACKS[1]['track_id']}" in meta1
 
     def test_metadata_uses_apple_music_desc(self, mock_speaker):
@@ -122,9 +122,9 @@ class TestGetNowPlaying:
             "current_transport_state": state
         }
         mock_speaker.get_current_track_info.return_value = {
-            "title": "Women",
-            "artist": "Def Leppard",
-            "album": "Hysteria",
+            "title": "Track One",
+            "artist": "Test Artist",
+            "album": "Test Album",
             "uri": "x-sonos-http:song%3a1440904001.mp4?sid=204&flags=8232&sn=3",
         }
 
@@ -132,9 +132,9 @@ class TestGetNowPlaying:
         self._setup_playing(mock_speaker)
         from sonos_controller import get_now_playing
         result = get_now_playing("10.0.0.12")
-        assert result["title"] == "Women"
-        assert result["artist"] == "Def Leppard"
-        assert result["album"] == "Hysteria"
+        assert result["title"] == "Track One"
+        assert result["artist"] == "Test Artist"
+        assert result["album"] == "Test Album"
 
     def test_paused_is_false_when_playing(self, mock_speaker):
         self._setup_playing(mock_speaker, state="PLAYING")

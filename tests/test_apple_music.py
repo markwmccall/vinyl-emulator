@@ -43,18 +43,18 @@ class TestSearchAlbums:
         from apple_music import search_albums
         mock_resp = make_mock_response(SAMPLE_SEARCH_RESPONSE)
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            results = search_albums("Hysteria Def Leppard")
+            results = search_albums("Test Album Test Artist")
         assert len(results) == 1
         assert results[0]["id"] == 1440903625
-        assert results[0]["name"] == "Hysteria"
-        assert results[0]["artist"] == "Def Leppard"
+        assert results[0]["name"] == "Test Album"
+        assert results[0]["artist"] == "Test Artist"
         assert "artwork_url" in results[0]
 
     def test_artwork_url_upgraded(self):
         from apple_music import search_albums
         mock_resp = make_mock_response(SAMPLE_SEARCH_RESPONSE)
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            results = search_albums("Hysteria Def Leppard")
+            results = search_albums("Test Album Test Artist")
         assert "600x600bb" in results[0]["artwork_url"]
 
     def test_empty_results(self):
@@ -78,8 +78,8 @@ class TestGetAlbumTracks:
         mock_resp = make_mock_response(SAMPLE_LOOKUP_RESPONSE)
         with patch("urllib.request.urlopen", return_value=mock_resp):
             tracks = get_album_tracks(1440903625)
-        assert tracks[0]["name"] == "Women"
-        assert tracks[1]["name"] == "Rocket"
+        assert tracks[0]["name"] == "Track One"
+        assert tracks[1]["name"] == "Track Two"
 
     def test_fields_mapped_correctly(self):
         from apple_music import get_album_tracks
@@ -88,10 +88,10 @@ class TestGetAlbumTracks:
             tracks = get_album_tracks(1440903625)
         t = tracks[0]
         assert t["track_id"] == 1440904001
-        assert t["name"] == "Women"
+        assert t["name"] == "Track One"
         assert t["track_number"] == 1
-        assert t["artist"] == "Def Leppard"
-        assert t["album"] == "Hysteria"
+        assert t["artist"] == "Test Artist"
+        assert t["album"] == "Test Album"
         assert "artwork_url" in t
 
     def test_artwork_url_upgraded(self):
@@ -125,9 +125,9 @@ class TestGetTrack:
             tracks = get_track(1440904001)
         t = tracks[0]
         assert t["track_id"] == 1440904001
-        assert t["name"] == "Women"
-        assert t["artist"] == "Def Leppard"
-        assert t["album"] == "Hysteria"
+        assert t["name"] == "Track One"
+        assert t["artist"] == "Test Artist"
+        assert t["album"] == "Test Album"
         assert "artwork_url" in t
         assert "album_id" in t
 
@@ -144,12 +144,12 @@ class TestSearchSongs:
         from apple_music import search_songs
         mock_resp = make_mock_response(SAMPLE_SONG_SEARCH_RESPONSE)
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            results = search_songs("Women Def Leppard")
+            results = search_songs("Track One Test Artist")
         assert len(results) == 2
         assert results[0]["id"] == 1440904001
-        assert results[0]["name"] == "Women"
-        assert results[0]["artist"] == "Def Leppard"
-        assert results[0]["album"] == "Hysteria"
+        assert results[0]["name"] == "Track One"
+        assert results[0]["artist"] == "Test Artist"
+        assert results[0]["album"] == "Test Album"
         assert "artwork_url" in results[0]
 
     def test_empty_results(self):
