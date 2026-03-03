@@ -34,7 +34,9 @@
       <span id="np-album" class="np-album"></span>
     </div>
     <div class="np-controls">
+      <button id="np-prev-btn" class="np-btn" title="Previous">⏮</button>
       <button id="np-pause-btn" class="np-btn" title="Pause">⏸</button>
+      <button id="np-next-btn" class="np-btn" title="Next">⏭</button>
     </div>
   </div>
 
@@ -70,6 +72,8 @@
     }
 
     const pauseBtn = document.getElementById('np-pause-btn');
+    const prevBtn = document.getElementById('np-prev-btn');
+    const nextBtn = document.getElementById('np-next-btn');
     let paused = false;
 
     pauseBtn.addEventListener('click', async () => {
@@ -79,6 +83,18 @@
       paused = !paused;
       pauseBtn.textContent = paused ? '▶' : '⏸';
       pauseBtn.title = paused ? 'Resume' : 'Pause';
+    });
+
+    prevBtn.addEventListener('click', async () => {
+      await fetch('/transport', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'prev'})});
+      setTimeout(refreshNowPlaying, 500);
+    });
+
+    nextBtn.addEventListener('click', async () => {
+      await fetch('/transport', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'next'})});
+      setTimeout(refreshNowPlaying, 500);
     });
 
     window.refreshNowPlaying = refreshNowPlaying;

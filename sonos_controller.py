@@ -180,6 +180,28 @@ def stop(speaker_ip, speaker_name=None, config_path=None):
             raise
 
 
+def next_track(speaker_ip, speaker_name=None, config_path=None):
+    try:
+        soco.SoCo(speaker_ip).next()
+    except Exception:
+        if speaker_name and config_path:
+            new_ip = _rediscover_speaker(speaker_name, config_path)
+            soco.SoCo(new_ip).next()
+        else:
+            raise
+
+
+def prev_track(speaker_ip, speaker_name=None, config_path=None):
+    try:
+        soco.SoCo(speaker_ip).previous()
+    except Exception:
+        if speaker_name and config_path:
+            new_ip = _rediscover_speaker(speaker_name, config_path)
+            soco.SoCo(new_ip).previous()
+        else:
+            raise
+
+
 def _do_play_album(speaker, track_dicts, sn):
     udn = _lookup_apple_music_udn(speaker, sn)
     speaker.clear_queue()

@@ -8,7 +8,7 @@ from flask import Flask, abort, jsonify, render_template, request
 
 import apple_music
 from nfc_interface import MockNFC, PN532NFC, parse_tag_data
-from sonos_controller import detect_apple_music_sn, get_now_playing, get_speakers, pause, play_album, resume, stop
+from sonos_controller import detect_apple_music_sn, get_now_playing, get_speakers, next_track, pause, play_album, prev_track, resume, stop
 
 app = Flask(__name__)
 
@@ -316,7 +316,7 @@ def health():
 def transport():
     data = request.get_json()
     action = data.get("action") if data else None
-    if action not in ("pause", "resume", "stop"):
+    if action not in ("pause", "resume", "stop", "next", "prev"):
         return jsonify({"error": "invalid action"}), 400
     config = _load_config()
     name = config.get("speaker_name")
@@ -324,6 +324,10 @@ def transport():
         pause(config["speaker_ip"], speaker_name=name, config_path=CONFIG_PATH)
     elif action == "resume":
         resume(config["speaker_ip"], speaker_name=name, config_path=CONFIG_PATH)
+    elif action == "next":
+        next_track(config["speaker_ip"], speaker_name=name, config_path=CONFIG_PATH)
+    elif action == "prev":
+        prev_track(config["speaker_ip"], speaker_name=name, config_path=CONFIG_PATH)
     else:
         stop(config["speaker_ip"], speaker_name=name, config_path=CONFIG_PATH)
     return jsonify({"status": "ok", "action": action})

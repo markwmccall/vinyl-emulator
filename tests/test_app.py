@@ -567,6 +567,18 @@ class TestTransport:
         assert resp.status_code == 200
         mock_stop.assert_called_once_with("10.0.0.12", speaker_name="Family Room", config_path=ANY)
 
+    def test_next_action(self, client, temp_config):
+        with patch("app.next_track") as mock_next:
+            resp = client.post("/transport", json={"action": "next"})
+        assert resp.status_code == 200
+        mock_next.assert_called_once_with("10.0.0.12", speaker_name="Family Room", config_path=ANY)
+
+    def test_prev_action(self, client, temp_config):
+        with patch("app.prev_track") as mock_prev:
+            resp = client.post("/transport", json={"action": "prev"})
+        assert resp.status_code == 200
+        mock_prev.assert_called_once_with("10.0.0.12", speaker_name="Family Room", config_path=ANY)
+
     def test_invalid_action_returns_400(self, client):
         resp = client.post("/transport", json={"action": "rewind"})
         assert resp.status_code == 400
