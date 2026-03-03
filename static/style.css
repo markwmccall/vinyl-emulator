@@ -20,12 +20,12 @@
   --text-4: #666;
 
   /* Buttons — primary (play, look up) */
-  --btn-primary: #1a7a1a;
-  --btn-primary-hover: #228a22;
+  --btn-primary: #1565e8;
+  --btn-primary-hover: #2575f8;
 
   /* Buttons — action (write, save) */
-  --btn-action: #e05a00;
-  --btn-action-hover: #f06a10;
+  --btn-action: #1565e8;
+  --btn-action-hover: #2575f8;
 
   /* Buttons — danger (stop, delete) */
   --btn-danger: #7a1a1a;
@@ -45,9 +45,9 @@
   --btn-font: 0.95rem;
 
   /* State: ok / success */
-  --ok-bg: #0d2e0d;
-  --ok-border: #2a6a2a;
-  --ok-text: #6d6;
+  --ok-bg: #091830;
+  --ok-border: #1565e8;
+  --ok-text: #5aadff;
 
   /* State: stopped / warning (badge) */
   --stopped-bg: #2e1a00;
@@ -380,7 +380,7 @@ a.track-name:hover { color: #fff; text-decoration: underline; }
 .speaker-row input { flex: 1; }
 .speaker-row button, #discover-btn {
   padding: 0.6rem 1rem;
-  background: var(--btn-disabled-deep);
+  background: transparent;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   color: var(--text);
@@ -388,24 +388,24 @@ a.track-name:hover { color: #fff; text-decoration: underline; }
   cursor: pointer;
   white-space: nowrap;
 }
-.speaker-row button:hover { background: var(--btn-neutral); }
+.speaker-row button:hover { background: var(--surface); border-color: var(--border-focus); }
 .speaker-row button:disabled { opacity: 0.5; cursor: default; }
 
 #speaker-select { margin-top: 0.5rem; }
 
 .save-btn {
-  background: var(--btn-action);
-  color: #fff;
-  border: none;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
   padding: 0.65rem 1.75rem;
   border-radius: var(--radius);
   font-size: var(--btn-font);
   font-weight: 600;
   cursor: pointer;
   margin-top: 0.5rem;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
-.save-btn:hover { background: var(--btn-action-hover); }
+.save-btn:hover { background: var(--surface); border-color: var(--border-focus); }
 
 .sticker-section {
   background: var(--surface);
