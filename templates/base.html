@@ -66,14 +66,23 @@
         const titleEl = document.getElementById('np-title');
         if (!data.album_id) {
           const q = encodeURIComponent(data.artist + ' ' + data.title);
-          titleEl.innerHTML = `<a href="/?q=${q}" class="np-search-link">${data.title}</a>`;
+          const ta = document.createElement('a');
+          ta.href = '/?q=' + q;
+          ta.className = 'np-search-link';
+          ta.textContent = data.title;
+          titleEl.textContent = '';
+          titleEl.appendChild(ta);
         } else {
           titleEl.textContent = data.title;
         }
         document.getElementById('np-artist').textContent = data.artist;
         const albumEl = document.getElementById('np-album');
         if (data.album_id) {
-          albumEl.innerHTML = `<a href="/album/${data.album_id}">${data.album}</a>`;
+          const aa = document.createElement('a');
+          aa.href = '/album/' + data.album_id;
+          aa.textContent = data.album;
+          albumEl.textContent = '';
+          albumEl.appendChild(aa);
         } else {
           albumEl.textContent = data.album;
         }

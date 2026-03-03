@@ -133,7 +133,7 @@ def get_now_playing(speaker_ip):
         if not info.get("title"):
             return None
         track_id = None
-        m = re.search(r"song%3[aA](\d+)\.mp4", info.get("uri", ""))
+        m = re.search(r"song(?:%3[aA]|:)(\d+)(?:\.mp4)?", info.get("uri", ""))
         if m and "sid=204" in info.get("uri", ""):
             track_id = int(m.group(1))
         return {

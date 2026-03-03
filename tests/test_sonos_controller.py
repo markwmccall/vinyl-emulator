@@ -158,6 +158,34 @@ class TestGetNowPlaying:
         from sonos_controller import get_now_playing
         assert get_now_playing("10.0.0.12")["track_id"] == 1440904001
 
+    def test_extracts_track_id_from_decoded_uri(self, mock_speaker):
+        # Sonos may URL-decode the stored URI, returning song: instead of song%3a
+        mock_speaker.get_current_transport_info.return_value = {
+            "current_transport_state": "PLAYING"
+        }
+        mock_speaker.get_current_track_info.return_value = {
+            "title": "Track One",
+            "artist": "Test Artist",
+            "album": "Test Album",
+            "uri": "x-sonos-http:song:1440904001.mp4?sid=204&flags=8232&sn=3",
+        }
+        from sonos_controller import get_now_playing
+        assert get_now_playing("10.0.0.12")["track_id"] == 1440904001
+
+    def test_extracts_track_id_from_hls_static_uri(self, mock_speaker):
+        # Sonos normalises to x-sonosapi-hls-static: without .mp4 when reporting back
+        mock_speaker.get_current_transport_info.return_value = {
+            "current_transport_state": "PLAYING"
+        }
+        mock_speaker.get_current_track_info.return_value = {
+            "title": "Track One",
+            "artist": "Test Artist",
+            "album": "Test Album",
+            "uri": "x-sonosapi-hls-static:song%3a1440904001?sid=204&flags=8232&sn=3",
+        }
+        from sonos_controller import get_now_playing
+        assert get_now_playing("10.0.0.12")["track_id"] == 1440904001
+
     def test_track_id_is_none_for_non_apple_music(self, mock_speaker):
         mock_speaker.get_current_transport_info.return_value = {
             "current_transport_state": "PLAYING"

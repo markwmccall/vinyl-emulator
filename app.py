@@ -1,16 +1,18 @@
 import argparse
 import json
 import os
+import secrets
 import subprocess
 from datetime import datetime
 
-from flask import Flask, abort, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request, session
 
 import apple_music
 from nfc_interface import MockNFC, PN532NFC, parse_tag_data
 from sonos_controller import detect_apple_music_sn, get_now_playing, get_speakers, next_track, pause, play_album, prev_track, resume, stop
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 TAGS_PATH = os.path.join(os.path.dirname(__file__), "tags.json")
@@ -215,6 +217,9 @@ def settings():
     config = _load_config()
     saved = False
     if request.method == "POST":
+        token = request.form.get("csrf_token", "")
+        if not token or token != session.get("csrf_token"):
+            abort(403)
         config["sn"] = request.form.get("sn", config["sn"])
         config["speaker_ip"] = request.form.get("speaker_ip", config["speaker_ip"])
         config["speaker_name"] = request.form.get("speaker_name", config.get("speaker_name", ""))
@@ -222,7 +227,10 @@ def settings():
         with open(CONFIG_PATH, "w") as f:
             json.dump(config, f, indent=2)
         saved = True
-    return render_template("settings.html", config=config, saved=saved)
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+    return render_template("settings.html", config=config, saved=saved,
+                           csrf_token=session["csrf_token"])
 
 
 @app.route("/speakers")

@@ -344,22 +344,49 @@ class TestSettings:
         assert b"10.0.0.12" in resp.data
 
     def test_post_saves_config(self, client, temp_config):
+        with client.session_transaction() as sess:
+            sess["csrf_token"] = "test-token"
         client.post("/settings", data={
             "sn": "5",
             "speaker_ip": "10.0.0.8",
             "nfc_mode": "mock",
+            "csrf_token": "test-token",
         })
         saved = json.loads(temp_config.read_text())
         assert saved["sn"] == "5"
         assert saved["speaker_ip"] == "10.0.0.8"
 
     def test_post_returns_200(self, client, temp_config):
+        with client.session_transaction() as sess:
+            sess["csrf_token"] = "test-token"
         resp = client.post("/settings", data={
             "sn": "3",
             "speaker_ip": "10.0.0.12",
             "nfc_mode": "mock",
+            "csrf_token": "test-token",
         })
         assert resp.status_code == 200
+
+    def test_post_rejects_missing_csrf_token(self, client, temp_config):
+        with client.session_transaction() as sess:
+            sess["csrf_token"] = "test-token"
+        resp = client.post("/settings", data={
+            "sn": "5",
+            "speaker_ip": "10.0.0.8",
+            "nfc_mode": "mock",
+        })
+        assert resp.status_code == 403
+
+    def test_post_rejects_wrong_csrf_token(self, client, temp_config):
+        with client.session_transaction() as sess:
+            sess["csrf_token"] = "test-token"
+        resp = client.post("/settings", data={
+            "sn": "5",
+            "speaker_ip": "10.0.0.8",
+            "nfc_mode": "mock",
+            "csrf_token": "wrong-token",
+        })
+        assert resp.status_code == 403
 
 
 class TestSpeakers:

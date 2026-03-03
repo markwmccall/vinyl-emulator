@@ -16,6 +16,8 @@ Items from code review. See commit history for context.
 
 - [x] **Duplicate JS in album.html / track.html** — `writeTag()` and `postAction()` are identical in both templates. Extract to a shared `static/player.js`.
 - [x] **No structured logging** — No use of Python `logging` module. Hard to debug production issues on the Pi.
+- [x] **XSS in now-playing bar** — `base.html` used `innerHTML` to inject Sonos track title and album name. Replaced with DOM API (`createElement`/`textContent`/`appendChild`).
+- [x] **CSRF on /settings** — HTML form POST accepted without token validation. Added Flask session-based CSRF token (generated on GET, validated on POST, 403 on mismatch).
 
 ---
 
