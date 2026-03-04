@@ -56,7 +56,8 @@
     const SVG_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
     let paused = false;
     let volumeDragging = false;
-    let volumeTimer = null;
+    let volumeLastSent = 0;
+    const VOLUME_THROTTLE_MS = 150;
 
     function updateSliderFill(slider) {
       const pct = (slider.value / slider.max) * 100;
@@ -113,7 +114,6 @@
     document.addEventListener('mouseup', (e) => {
       if (!volumeDragging) return;
       volumeDragging = false;
-      clearTimeout(volumeTimer);
       if (!volumeIsDrag) {
         applyTapDelta(e.clientX);
       } else {
@@ -123,7 +123,6 @@
     document.addEventListener('touchend', (e) => {
       if (!volumeDragging) return;
       volumeDragging = false;
-      clearTimeout(volumeTimer);
       if (!volumeIsDrag) {
         applyTapDelta(e.changedTouches[0].clientX);
       } else {
@@ -135,8 +134,11 @@
       updateSliderFill(volumeSlider);
       updateVolumeDisplay(volumeSlider.value);
       if (volumeIsDrag) {
-        clearTimeout(volumeTimer);
-        volumeTimer = setTimeout(() => sendVolume(volumeSlider.value), 300);
+        const now = Date.now();
+        if (now - volumeLastSent >= VOLUME_THROTTLE_MS) {
+          volumeLastSent = now;
+          sendVolume(volumeSlider.value);
+        }
       }
     });
     let suppressHide = false;
