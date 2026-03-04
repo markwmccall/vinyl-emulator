@@ -21,7 +21,7 @@ echo ""
 # --- System packages ---
 echo "[1/5] Installing system packages..."
 sudo apt-get update -qq
-sudo apt-get install -y python3-pip python3-dev python3-venv git libxml2-dev libxslt-dev
+sudo apt-get install -y python3-pip python3-dev python3-venv git libxml2-dev libxslt-dev python3-lxml
 
 # --- Enable SPI ---
 echo "[2/5] Enabling SPI interface..."
@@ -30,7 +30,7 @@ echo "      SPI enabled (takes effect after reboot)"
 
 # --- Python dependencies ---
 echo "[3/5] Creating venv and installing Python dependencies..."
-python3 -m venv "$REPO_DIR/.venv"
+python3 -m venv --system-site-packages "$REPO_DIR/.venv"
 "$REPO_DIR/.venv/bin/pip" install -r "$REPO_DIR/requirements.txt"
 "$REPO_DIR/.venv/bin/pip" install adafruit-circuitpython-pn532 RPi.GPIO spidev
 
