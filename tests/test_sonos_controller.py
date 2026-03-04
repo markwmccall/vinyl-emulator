@@ -473,3 +473,23 @@ class TestTransportSelfHealing:
         mocker.patch("soco.SoCo", return_value=speaker)
         with pytest.raises(Exception, match="connection refused"):
             prev_track("10.0.0.12")
+
+    def test_get_volume_returns_none_on_exception(self, mocker):
+        from sonos_controller import get_volume
+        mocker.patch("soco.SoCo", side_effect=Exception("unreachable"))
+        assert get_volume("10.0.0.12") is None
+
+    def test_set_volume_heals_on_exception(self, mocker):
+        from sonos_controller import set_volume
+        new_speaker = MagicMock()
+        mocker.patch("soco.SoCo", side_effect=[Exception("unreachable"), new_speaker])
+        mocker.patch("sonos_controller._rediscover_speaker", return_value="10.0.0.99")
+        set_volume("10.0.0.12", 42, speaker_name="Living Room", config_path="/tmp/config.json")
+        assert new_speaker.volume == 42
+
+    def test_set_volume_raises_without_speaker_info(self, mocker):
+        import pytest
+        from sonos_controller import set_volume
+        mocker.patch("soco.SoCo", side_effect=Exception("unreachable"))
+        with pytest.raises(Exception, match="unreachable"):
+            set_volume("10.0.0.12", 42)
