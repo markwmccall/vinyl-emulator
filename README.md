@@ -80,13 +80,15 @@ chmod +x setup.sh && ./setup.sh
 ```
 
 `setup.sh` does everything in one shot:
-- Installs system packages (`python3-pip`, `python3-dev`)
+- Installs system packages (`python3-pip`, `python3-dev`, `libxml2-dev`, `libxslt-dev`)
 - Enables the SPI interface (required for the PN532 HAT)
-- Installs Python dependencies including the Adafruit PN532 library
+- Creates a Python venv and installs all dependencies including the Adafruit PN532 library
 - Creates `config.json` with `nfc_mode=pn532`
 - Installs and enables the `vinyl-player` and `vinyl-web` systemd services
 
 It will prompt you to reboot at the end — SPI requires a reboot to take effect.
+
+> **Note for Pi Zero 2 W users:** The first run compiles `lxml` (a Sonos dependency) from source, which can take 10–20 minutes on the Zero's ARM CPU. This is a one-time cost — subsequent runs are fast.
 
 ### 5. Configure
 
@@ -96,15 +98,15 @@ After rebooting, open `http://vinyl-pi.local:5000` in your browser and go to **S
 
 ## Updating
 
-To update to the latest release on the Pi:
+To update to the latest code on the Pi:
 
 ```bash
 cd ~/vinyl-emulator
-git fetch --tags
-git checkout $(git describe --tags `git rev-list --tags --max-count=1`)
-pip3 install --break-system-packages -r requirements.txt
-sudo systemctl restart vinyl-web vinyl-player
+git pull
+./setup.sh
 ```
+
+`setup.sh` is safe to re-run — it skips `config.json` if it already exists and restarts services when done.
 
 ---
 
