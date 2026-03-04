@@ -14,7 +14,7 @@
 <body>
   <header>
     <nav>
-      <a href="{{ url_for('index') }}" class="logo">&#9679; Vinyl Emulator</a>
+      <a href="{{ url_for('index') }}" class="logo"><img src="{{ url_for('static', filename='logo.svg') }}" width="38" height="38" alt=""> Vinyl Emulator</a>
       <div class="nav-links">
         <a href="{{ url_for('collection') }}">Collection</a>
         <a href="{{ url_for('verify') }}">Verify Tag</a>
