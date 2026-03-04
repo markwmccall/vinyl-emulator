@@ -477,10 +477,10 @@ a.track-name:hover { color: #fff; text-decoration: underline; }
   gap: 0.75rem;
   background: var(--surface-bar);
   border-top: 1px solid var(--border);
-  padding: 0.6rem 1rem;
+  padding: 0.75rem 1rem;
   z-index: 100;
 }
-.np-art { width: 44px; height: 44px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
+.np-art { width: 52px; height: 52px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
 .np-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
 .np-title { font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-artist { font-size: 0.78rem; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -489,9 +489,15 @@ a.track-name:hover { color: #fff; text-decoration: underline; }
 .np-album a:hover { text-decoration: underline; }
 .np-search-link { color: inherit; text-decoration: none; }
 .np-search-link:hover { text-decoration: underline; }
-.np-controls { display: flex; gap: 0.5rem; flex-shrink: 0; }
-.np-btn { background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; padding: 0.25rem; line-height: 1; }
-.np-btn:hover { color: #ccc; }
+.np-controls { display: flex; gap: 0.5rem; flex-shrink: 0; align-items: center; }
+.np-btn { background: none; border: none; color: rgba(255,255,255,0.7); cursor: pointer; padding: 0; border-radius: 50%; width: 3.25rem; height: 3.25rem; display: flex; align-items: center; justify-content: center; transition: color 0.15s, transform 0.1s; flex-shrink: 0; }
+.np-btn svg { width: 2.5rem; height: 2.5rem; }
+.np-btn:hover { color: #fff; }
+.np-btn:active { transform: scale(0.88); }
+.np-btn-primary { background: none; color: #fff; width: 4.25rem; height: 4.25rem; }
+.np-btn-primary svg { width: 3rem; height: 3rem; }
+.np-btn-primary:hover { color: #fff; }
+.np-btn-primary:active { transform: scale(0.92); }
 
 /* Collection page */
 .collection-page h1 { font-size: 1.6rem; margin-bottom: 1.25rem; }
