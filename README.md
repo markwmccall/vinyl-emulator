@@ -1,5 +1,7 @@
 # Vinyl Emulator
 
+<img src="static/logo.svg" width="80" alt="Vinyl Emulator logo">
+
 [![Tests](https://github.com/markwmccall/vinyl-emulator/actions/workflows/tests.yml/badge.svg)](https://github.com/markwmccall/vinyl-emulator/actions/workflows/tests.yml)
 
 > **Work in progress.** The software is functional and tested. The web UI, Sonos playback, and tag writing are all working. Physical NFC card taps (`PN532NFC`) are not yet implemented — use `--simulate` mode or the web UI's Play Now button in the meantime.
