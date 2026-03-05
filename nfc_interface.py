@@ -88,16 +88,14 @@ class MockNFC:
 
 
 class PN532NFC:
-    """Raspberry Pi NFC implementation using the Waveshare PN532 HAT via SPI."""
+    """Raspberry Pi NFC implementation using the Waveshare PN532 HAT via I2C."""
 
     def __init__(self):
         import board
         import busio
-        import digitalio
-        from adafruit_pn532.spi import PN532_SPI
-        spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
-        cs = digitalio.DigitalInOut(board.CE0)
-        self._pn532 = PN532_SPI(spi, cs, debug=False)
+        from adafruit_pn532.i2c import PN532_I2C
+        i2c = busio.I2C(board.SCL, board.SDA)
+        self._pn532 = PN532_I2C(i2c, debug=False)
         self._pn532.SAM_configuration()
 
     def read_tag(self):

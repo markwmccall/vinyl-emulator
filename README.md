@@ -53,7 +53,7 @@ Download [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Select **
 
 ### 2. Assemble the hardware
 
-Attach the PN532 NFC HAT to the Pi's 40-pin GPIO header. Before powering on, set the HAT's interface switch to **SPI** — refer to the [Waveshare PN532 HAT wiki](https://www.waveshare.com/wiki/PN532_NFC_HAT) for the exact switch position.
+Attach the PN532 NFC HAT to the Pi's 40-pin GPIO header. Before powering on, set the HAT's interface switches to **I2C** — refer to the [Waveshare PN532 HAT wiki](https://www.waveshare.com/wiki/PN532_NFC_HAT) for the exact switch positions.
 
 Insert the SD card and power on. Wait about 60 seconds, then SSH in:
 
@@ -63,15 +63,13 @@ ssh pi@vinyl-pi.local
 
 ### 3. Verify the HAT is detected
 
-Before running setup, confirm the PN532 HAT is working:
+Before running setup, confirm the PN532 HAT is visible on the I2C bus:
 
 ```bash
-pip3 install adafruit-circuitpython-pn532
-curl -O https://raw.githubusercontent.com/adafruit/Adafruit_CircuitPython_PN532/main/examples/pn532_simpletest.py
-python3 pn532_simpletest.py
+sudo i2cdetect -y 1
 ```
 
-Hold an NFC card near the reader. You should see the card's UID printed. If nothing happens, check that the HAT is firmly seated on the GPIO pins and the interface switch is set to SPI.
+You should see `24` appear in the grid at address `0x24`. If nothing appears, check that the HAT is firmly seated on the GPIO pins and the interface switches are set to I2C.
 
 ### 4. Clone and run setup
 
@@ -120,9 +118,10 @@ git pull
 - Try the IP address directly if mDNS isn't resolving
 
 **HAT not detected by the test script**
-- Confirm the interface switch on the HAT is set to SPI (not I2C or UART)
+- Confirm the interface switches on the HAT are set to I2C (not SPI or UART)
 - Check the HAT is firmly seated — all 40 pins engaged
-- SPI must be enabled: `sudo raspi-config` → Interface Options → SPI
+- I2C must be enabled: `sudo raspi-config` → Interface Options → I2C
+- Verify with `sudo i2cdetect -y 1` — PN532 should appear at address `0x24`
 
 **Music doesn't play after tapping a card**
 - Check `sudo systemctl status vinyl-player` for errors
