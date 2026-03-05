@@ -23,10 +23,11 @@
       </div>
     </nav>
   </header>
-  <main>
+  <main class="{% if show_now_playing %}has-now-playing{% endif %}">
     {% block content %}{% endblock %}
   </main>
 
+  {% if show_now_playing %}
   <div id="now-playing-bar" class="now-playing-bar" style="display:none">
     <div class="np-main-row">
       <img id="np-art" src="" alt="" class="np-art" style="display:none">
@@ -222,5 +223,6 @@
     refreshNowPlaying();
     setInterval(refreshNowPlaying, 5000);
   </script>
+  {% endif %}
 </body>
 </html>

@@ -197,7 +197,7 @@ def album(album_id):
     tracks = apple_music.get_album_tracks(album_id)
     if not tracks:
         abort(404)
-    return render_template("album.html", album_id=album_id, tracks=tracks)
+    return render_template("album.html", album_id=album_id, tracks=tracks, show_now_playing=True)
 
 
 @app.route("/track/<int:track_id>")
@@ -205,7 +205,7 @@ def track(track_id):
     tracks = apple_music.get_track(track_id)
     if not tracks:
         abort(404)
-    return render_template("track.html", track_id=track_id, track=tracks[0])
+    return render_template("track.html", track_id=track_id, track=tracks[0], show_now_playing=True)
 
 
 @app.route("/print")
