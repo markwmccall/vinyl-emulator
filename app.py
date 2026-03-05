@@ -3,6 +3,7 @@ import json
 import os
 import secrets
 import subprocess
+import time
 from datetime import datetime
 
 from flask import Flask, abort, jsonify, render_template, request, session
@@ -36,6 +37,10 @@ def _stop_player_if_active():
     )
     if result.stdout.strip() == "active":
         subprocess.run(["sudo", "systemctl", "stop", "vinyl-player"], check=False)
+        # Give the PN532 time to finish its in-progress ReadPassiveTarget command
+        # before we try to re-initialise the I2C device. Without this the probe
+        # hits the device while it is still busy and raises ValueError.
+        time.sleep(1)
         return True
     return False
 
