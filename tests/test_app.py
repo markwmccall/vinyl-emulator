@@ -186,6 +186,8 @@ class TestWriteTagPN532:
         }))
         monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
         monkeypatch.setattr(app, "TAGS_PATH", str(tmp_path / "tags.json"))
+        monkeypatch.setattr(app, "_stop_player_if_active", lambda: False)
+        monkeypatch.setattr(app, "_start_player", lambda: None)
         return config_file
 
     def test_blank_tag_writes_immediately(self, client, tmp_path, monkeypatch):
@@ -249,6 +251,19 @@ class TestWriteTagPN532:
             resp = client.post("/write-tag", json={"album_id": "1440903625"})
         assert resp.status_code == 409
         assert "locked" in resp.get_json()["error"]
+
+    def test_player_stopped_and_restarted_on_write(self, client, tmp_path, monkeypatch):
+        import app
+        self._pn532_config(tmp_path, monkeypatch)
+        calls = []
+        monkeypatch.setattr(app, "_stop_player_if_active", lambda: (calls.append("stop") or True))
+        monkeypatch.setattr(app, "_start_player", lambda: calls.append("start"))
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = None
+        with patch("app.PN532NFC", return_value=mock_nfc):
+            resp = client.post("/write-tag", json={"album_id": "1440903625"})
+        assert resp.status_code == 200
+        assert calls == ["stop", "start"]
 
 
 class TestWriteUrlTag:
@@ -811,6 +826,8 @@ class TestNfcRoutes503:
         }))
         monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
         monkeypatch.setattr(app, "TAGS_PATH", str(tmp_path / "tags.json"))
+        monkeypatch.setattr(app, "_stop_player_if_active", lambda: False)
+        monkeypatch.setattr(app, "_start_player", lambda: None)
 
     def test_write_tag_503_on_import_error(self, client, tmp_path, monkeypatch):
         self._pn532_config(tmp_path, monkeypatch)
