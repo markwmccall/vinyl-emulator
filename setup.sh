@@ -3,7 +3,7 @@
 # Run once after cloning the repo on the Pi:
 #   chmod +x setup.sh && ./setup.sh
 #
-# After the script finishes it will prompt you to reboot (required for SPI).
+# After the script finishes it will prompt you to reboot (required for I2C).
 # After rebooting, open http://vinyl-pi.local:5000 in your browser,
 # go to Settings, and fill in your speaker IP and sn value.
 
@@ -23,10 +23,11 @@ echo "[1/5] Installing system packages..."
 sudo apt-get update -qq
 sudo apt-get install -y python3-pip python3-dev python3-venv git libxml2-dev libxslt-dev python3-lxml
 
-# --- Enable I2C ---
+# --- Enable I2C and add user to i2c group ---
 echo "[2/5] Enabling I2C interface..."
 sudo raspi-config nonint do_i2c 0
-echo "      I2C enabled (takes effect after reboot)"
+sudo usermod -a -G i2c "$USERNAME"
+echo "      I2C enabled and $USERNAME added to i2c group (takes effect after reboot)"
 
 # --- Stop services before touching the venv ---
 sudo systemctl stop vinyl-player vinyl-web 2>/dev/null || true
