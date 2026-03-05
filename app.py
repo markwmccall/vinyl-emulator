@@ -25,6 +25,7 @@ log = logging.getLogger(__name__)
 # Shared NFC device and lock used by the background polling thread and web routes.
 _nfc_lock = threading.Lock()
 _nfc = None
+_nfc_last_tag = None  # debounce state shared between NFC loop and /read-tag
 
 
 def _load_config():
@@ -87,7 +88,7 @@ def _nfc_loop(config_path):
     Holds _nfc_lock only during the I2C read (up to 0.5 s). Releases it
     before calling play_album so web routes never wait on a Sonos network call.
     """
-    last_tag = None
+    global _nfc_last_tag
     while True:
         try:
             with _nfc_lock:
@@ -97,13 +98,13 @@ def _nfc_loop(config_path):
             continue
 
         if tag_data is None:
-            last_tag = None
+            _nfc_last_tag = None
             continue
 
-        if tag_data == last_tag:
+        if tag_data == _nfc_last_tag:
             continue  # same card still present — ignore
 
-        last_tag = tag_data
+        _nfc_last_tag = tag_data
         try:
             tag = parse_tag_data(tag_data)
             tracks = (apple_music.get_track(tag["id"]) if tag["type"] == "track"
@@ -359,6 +360,7 @@ def speakers():
 
 @app.route("/read-tag")
 def read_tag():
+    global _nfc_last_tag
     config = _load_config()
     tag_string = request.args.get("tag")
     if tag_string is None:
@@ -372,6 +374,8 @@ def read_tag():
                                 "album": None, "error": "NFC busy, try again"})
             try:
                 tag_string = _nfc.read_tag()
+                if tag_string:
+                    _nfc_last_tag = tag_string
             finally:
                 _nfc_lock.release()
         else:

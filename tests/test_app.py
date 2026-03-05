@@ -950,6 +950,7 @@ class TestNfcLoop:
             "speaker_name": "Family Room", "nfc_mode": "pn532",
         }))
         monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        monkeypatch.setattr(app, "_nfc_last_tag", None)
         return str(config_file)
 
     def test_plays_on_card_tap(self, pn532_config, monkeypatch):
@@ -992,6 +993,20 @@ class TestNfcLoop:
             with pytest.raises(KeyboardInterrupt):
                 app._nfc_loop(pn532_config)
         assert mock_play.call_count == 2
+
+    def test_verify_tag_read_suppresses_loop_playback(self, pn532_config, monkeypatch):
+        """Card read by /read-tag should not trigger playback in the NFC loop."""
+        import app
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.side_effect = ["apple:1440903625", KeyboardInterrupt]
+        monkeypatch.setattr(app, "_nfc", mock_nfc)
+        # Simulate /read-tag having already read this card
+        monkeypatch.setattr(app, "_nfc_last_tag", "apple:1440903625")
+        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+             patch("app.play_album") as mock_play:
+            with pytest.raises(KeyboardInterrupt):
+                app._nfc_loop(pn532_config)
+        mock_play.assert_not_called()
 
     def test_start_nfc_thread_no_op_in_mock_mode(self, tmp_path, monkeypatch):
         import app
