@@ -439,10 +439,13 @@ def now_playing():
         "artwork_url": None,
     }
     if info["track_id"]:
-        tracks = apple_music.get_track(info["track_id"])
-        if tracks:
-            result["album_id"] = tracks[0].get("album_id")
-            result["artwork_url"] = tracks[0].get("artwork_url")
+        try:
+            tracks = apple_music.get_track(info["track_id"])
+            if tracks:
+                result["album_id"] = tracks[0].get("album_id")
+                result["artwork_url"] = tracks[0].get("artwork_url")
+        except Exception:
+            pass  # transient network error — return what we have
     result["volume"] = get_volume(config["speaker_ip"])
     return jsonify(result)
 
