@@ -66,6 +66,16 @@ class TestLoopMode:
         mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3",
                                           speaker_name="Family Room", config_path=ANY)
 
+    def test_loop_skips_none_read(self, config_file):
+        from player import run
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.side_effect = [None, None, "apple:1440903625", KeyboardInterrupt]
+        with patch("player.MockNFC", return_value=mock_nfc), \
+             patch("player.get_album_tracks", return_value=SAMPLE_TRACKS), \
+             patch("player.play_album") as mock_play:
+            run(config_path=config_file)
+        mock_play.assert_called_once()
+
     def test_loop_continues_after_bad_tag(self, config_file):
         from player import run
         mock_nfc = MagicMock()

@@ -51,6 +51,8 @@ def run(config_path=DEFAULT_CONFIG_PATH, simulate=None):
     while True:
         try:
             tag_data = nfc.read_tag()
+            if tag_data is None:
+                continue
             tag = parse_tag_data(tag_data)
             tracks = get_track(tag["id"]) if tag["type"] == "track" else get_album_tracks(tag["id"])
             # Reload config on each tap so a rediscovered IP is used immediately
