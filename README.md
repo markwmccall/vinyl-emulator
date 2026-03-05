@@ -4,7 +4,7 @@
 
 [![Tests](https://github.com/markwmccall/vinyl-emulator/actions/workflows/tests.yml/badge.svg)](https://github.com/markwmccall/vinyl-emulator/actions/workflows/tests.yml)
 
-> **Work in progress.** The software is functional and tested. The web UI, Sonos playback, and tag writing are all working. Physical NFC card taps (`PN532NFC`) are not yet implemented — use `--simulate` mode or the web UI's Play Now button in the meantime.
+> **Work in progress.** The software is functional and tested. The web UI, Sonos playback, NFC card taps, and tag writing are all working.
 
 Tap an NFC card → an album or song plays on your Sonos speaker.
 
@@ -81,12 +81,12 @@ chmod +x setup.sh && ./setup.sh
 
 `setup.sh` does everything in one shot:
 - Installs system packages (`python3-pip`, `python3-dev`, `libxml2-dev`, `libxslt-dev`)
-- Enables the SPI interface (required for the PN532 HAT)
+- Enables the I2C interface (required for the PN532 HAT)
 - Creates a Python venv and installs all dependencies including the Adafruit PN532 library
 - Creates `config.json` with `nfc_mode=pn532`
 - Installs and enables the `vinyl-player` and `vinyl-web` systemd services
 
-It will prompt you to reboot at the end — SPI requires a reboot to take effect.
+It will prompt you to reboot at the end — I2C requires a reboot to take effect.
 
 > **Note for Pi Zero 2 W users:** The first run compiles `lxml` (a Sonos dependency) from source, which can take 10–20 minutes on the Zero's ARM CPU. This is a one-time cost — subsequent runs are fast.
 
