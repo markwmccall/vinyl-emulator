@@ -359,6 +359,10 @@ a.track-name:hover { color: var(--text); text-decoration: underline; }
 
 /* Settings page */
 .settings-page h1 { font-size: 1.6rem; margin-bottom: 1.5rem; }
+.speaker-name-area { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0; }
+.speaker-name-display { font-size: 1.05rem; font-weight: 600; color: var(--text); }
+.speaker-name-display.hidden { display: none; }
+.speaker-ip-secondary { font-size: 0.8rem; color: var(--text-3); background: transparent; border-color: transparent; padding-left: 0; }
 
 .player-control-section {
   background: var(--surface);
