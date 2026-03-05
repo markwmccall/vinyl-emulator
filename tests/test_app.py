@@ -539,13 +539,14 @@ class TestReadTag:
         assert data["content_id"] == "1440903625"
 
     def test_pn532_reads_tag(self, client, tmp_path, monkeypatch):
-        import app, json
+        import app, json, queue as q
         config_file = tmp_path / "config_rt.json"
         config_file.write_text(json.dumps({"sn": "3", "speaker_ip": "10.0.0.12", "nfc_mode": "pn532"}))
         monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
-        mock_nfc = MagicMock()
-        mock_nfc.read_tag.return_value = "apple:1440903625"
-        monkeypatch.setattr(app, "_nfc", mock_nfc)
+        monkeypatch.setattr(app, "_nfc", MagicMock())
+        fresh_queue = q.Queue(maxsize=1)
+        fresh_queue.put("apple:1440903625")
+        monkeypatch.setattr(app, "_nfc_read_queue", fresh_queue)
         with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/read-tag")
         assert resp.status_code == 200
@@ -557,18 +558,20 @@ class TestReadTag:
         assert resp.status_code == 200
         assert "not installed" in resp.get_json()["error"]
 
-    def test_pn532_lock_busy_returns_error_json(self, client, tmp_path, monkeypatch):
-        import app, json
+    def test_pn532_no_card_returns_null_tag(self, client, tmp_path, monkeypatch):
+        import app, json, queue as q
         config_file = tmp_path / "config_rtb.json"
         config_file.write_text(json.dumps({"sn": "3", "speaker_ip": "10.0.0.12", "nfc_mode": "pn532"}))
         monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
         monkeypatch.setattr(app, "_nfc", MagicMock())
-        mock_lock = MagicMock()
-        mock_lock.acquire.return_value = False
-        monkeypatch.setattr(app, "_nfc_lock", mock_lock)
+        fresh_queue = q.Queue(maxsize=1)
+        monkeypatch.setattr(app, "_nfc_read_queue", fresh_queue)
+        monkeypatch.setattr(fresh_queue, "get", MagicMock(side_effect=q.Empty))
         resp = client.get("/read-tag")
         assert resp.status_code == 200
-        assert "busy" in resp.get_json()["error"]
+        data = resp.get_json()
+        assert data["tag_string"] is None
+        assert data["error"] is None
 
 
 class TestVerify:
@@ -1147,6 +1150,21 @@ class TestNfcLoop:
             with pytest.raises(KeyboardInterrupt):
                 app._nfc_loop(pn532_config)
         mock_play.assert_not_called()
+
+    def test_web_read_pending_delivers_to_queue_skips_play(self, pn532_config, monkeypatch):
+        """When _web_read_pending is True, loop puts to queue and skips playback."""
+        import app, queue as q
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.side_effect = ["apple:1440903625", KeyboardInterrupt]
+        monkeypatch.setattr(app, "_nfc", mock_nfc)
+        monkeypatch.setattr(app, "_web_read_pending", True)
+        fresh_queue = q.Queue(maxsize=1)
+        monkeypatch.setattr(app, "_nfc_read_queue", fresh_queue)
+        with patch("app.play_album") as mock_play:
+            with pytest.raises(KeyboardInterrupt):
+                app._nfc_loop(pn532_config)
+        mock_play.assert_not_called()
+        assert fresh_queue.get_nowait() == "apple:1440903625"
 
     def test_start_nfc_thread_no_op_in_mock_mode(self, tmp_path, monkeypatch):
         import app

@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import queue
 import secrets
 import signal
 import subprocess
@@ -26,7 +27,9 @@ log = logging.getLogger(__name__)
 # Shared NFC device and lock used by the background polling thread and web routes.
 _nfc_lock = threading.Lock()
 _nfc = None
-_nfc_last_tag = None  # debounce state shared between NFC loop and /read-tag
+_nfc_last_tag = None       # debounce: last tag seen by the loop
+_web_read_pending = False  # True while /read-tag is waiting for a card
+_nfc_read_queue = queue.Queue(maxsize=1)  # loop posts here when _web_read_pending
 
 
 def _load_config():
@@ -88,6 +91,9 @@ def _nfc_loop(config_path):
 
     Holds _nfc_lock only during the I2C read (up to 0.5 s). Releases it
     before calling play_album so web routes never wait on a Sonos network call.
+
+    When _web_read_pending is set, the loop delivers the next read result to
+    _nfc_read_queue instead of playing, eliminating the race with /read-tag.
     """
     global _nfc_last_tag
     while True:
@@ -100,6 +106,16 @@ def _nfc_loop(config_path):
 
         if tag_data is None:
             _nfc_last_tag = None
+            continue
+
+        if _web_read_pending:
+            # /read-tag is waiting — hand off the result, skip playback.
+            # Check before debounce so a card already on the reader is delivered.
+            _nfc_last_tag = tag_data
+            try:
+                _nfc_read_queue.put_nowait(tag_data)
+            except queue.Full:
+                pass
             continue
 
         if tag_data == _nfc_last_tag:
@@ -367,7 +383,7 @@ def speakers():
 
 @app.route("/read-tag")
 def read_tag():
-    global _nfc_last_tag
+    global _web_read_pending
     config = _load_config()
     tag_string = request.args.get("tag")
     if tag_string is None:
@@ -375,16 +391,19 @@ def read_tag():
             if _nfc is None:
                 return jsonify({"tag_string": None, "tag_type": None, "content_id": None,
                                 "album": None, "error": "NFC not initialised"})
-            acquired = _nfc_lock.acquire(timeout=2.0)
-            if not acquired:
-                return jsonify({"tag_string": None, "tag_type": None, "content_id": None,
-                                "album": None, "error": "NFC busy, try again"})
+            _web_read_pending = True
             try:
-                tag_string = _nfc.read_tag()
-                if tag_string:
-                    _nfc_last_tag = tag_string
+                tag_string = _nfc_read_queue.get(timeout=8.0)
+            except queue.Empty:
+                tag_string = None
             finally:
-                _nfc_lock.release()
+                _web_read_pending = False
+                # Drain any stale queued result
+                while not _nfc_read_queue.empty():
+                    try:
+                        _nfc_read_queue.get_nowait()
+                    except queue.Empty:
+                        break
         else:
             try:
                 nfc = _make_nfc(config)
