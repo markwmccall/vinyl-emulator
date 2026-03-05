@@ -84,7 +84,7 @@ chmod +x setup.sh && ./setup.sh
 - Enables the I2C interface (required for the PN532 HAT)
 - Creates a Python venv and installs all dependencies including the Adafruit PN532 library
 - Creates `config.json` with `nfc_mode=pn532`
-- Installs and enables the `vinyl-player` and `vinyl-web` systemd services
+- Installs and enables the `vinyl-web` systemd service
 
 It will prompt you to reboot at the end — I2C requires a reboot to take effect.
 
@@ -124,7 +124,7 @@ git pull
 - Verify with `sudo i2cdetect -y 1` — PN532 should appear at address `0x24`
 
 **Music doesn't play after tapping a card**
-- Check `sudo systemctl status vinyl-player` for errors
+- Check `sudo systemctl status vinyl-web` for errors
 - Confirm `speaker_ip` and `sn` are set correctly in Settings
 - Try Play Now from the web UI to rule out a Sonos configuration issue
 
@@ -172,18 +172,17 @@ Open `http://localhost:5000` (or `http://vinyl-pi.local:5000` from your phone).
 
 > **Security note:** The web UI has no authentication. It is intended for use on a trusted home network only — do not expose port 5000 to the internet.
 
-**Player daemon (NFC loop):**
+**Player CLI (testing/debugging):**
 ```bash
-python3 player.py                            # waits for card taps, plays on Sonos
 python3 player.py --simulate apple:1440903625  # play once without a card
-python3 player.py --read                     # read one tag, print its content, exit
+python3 player.py --read                       # read one tag, print its content, exit
 ```
 
-On the Pi with systemd, the player and web UI start automatically on boot. To manage them manually:
+On the Pi, NFC polling runs automatically inside the `vinyl-web` process. To manage the service:
 ```bash
-sudo systemctl stop vinyl-player     # stop before writing new tags
-sudo systemctl start vinyl-player    # restart after writing tags
-sudo systemctl status vinyl-player   # check if running
+sudo systemctl status vinyl-web   # check if running
+sudo systemctl restart vinyl-web  # restart
+sudo journalctl -u vinyl-web -f   # follow logs
 ```
 
 ---
@@ -222,7 +221,7 @@ Write `http://vinyl-pi.local:5000` as a URL record on a spare NTAG213 sticker an
 
 ```
 app.py              Flask web app (search, play, write-tag, verify)
-player.py           NFC loop daemon + --simulate / --read flags
+player.py           CLI tool: --simulate (play without a card), --read (read one tag)
 apple_music.py      iTunes Search API: search albums/songs, fetch tracks
 sonos_controller.py Sonos SOAP/UPnP: queue and play tracks via SoCo
 nfc_interface.py    NFC abstraction: MockNFC (stdin), PN532NFC (Pi)
