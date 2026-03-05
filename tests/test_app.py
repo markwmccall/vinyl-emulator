@@ -990,3 +990,70 @@ class TestPrintInserts:
             resp = client.get("/print?ids=111,999")
         assert resp.status_code == 200
         assert b"Album A" in resp.data
+
+
+class TestNfcLoop:
+    """Tests for the background NFC polling loop and debounce logic."""
+
+    @pytest.fixture
+    def pn532_config(self, tmp_path, monkeypatch):
+        import app
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({
+            "sn": "3", "speaker_ip": "10.0.0.12",
+            "speaker_name": "Family Room", "nfc_mode": "pn532",
+        }))
+        monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        return str(config_file)
+
+    def test_plays_on_card_tap(self, pn532_config, monkeypatch):
+        import app
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.side_effect = ["apple:1440903625", KeyboardInterrupt]
+        monkeypatch.setattr(app, "_nfc", mock_nfc)
+        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+             patch("app.play_album") as mock_play:
+            with pytest.raises(KeyboardInterrupt):
+                app._nfc_loop(pn532_config)
+        mock_play.assert_called_once()
+
+    def test_debounce_same_card_plays_once(self, pn532_config, monkeypatch):
+        import app
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.side_effect = [
+            "apple:1440903625", "apple:1440903625", "apple:1440903625",
+            KeyboardInterrupt,
+        ]
+        monkeypatch.setattr(app, "_nfc", mock_nfc)
+        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+             patch("app.play_album") as mock_play:
+            with pytest.raises(KeyboardInterrupt):
+                app._nfc_loop(pn532_config)
+        mock_play.assert_called_once()
+
+    def test_replays_after_card_removed(self, pn532_config, monkeypatch):
+        import app
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.side_effect = [
+            "apple:1440903625",  # first tap → play
+            None,                # card removed
+            "apple:1440903625",  # second tap → play again
+            KeyboardInterrupt,
+        ]
+        monkeypatch.setattr(app, "_nfc", mock_nfc)
+        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+             patch("app.play_album") as mock_play:
+            with pytest.raises(KeyboardInterrupt):
+                app._nfc_loop(pn532_config)
+        assert mock_play.call_count == 2
+
+    def test_start_nfc_thread_no_op_in_mock_mode(self, tmp_path, monkeypatch):
+        import app
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({
+            "sn": "3", "speaker_ip": "10.0.0.12", "nfc_mode": "mock",
+        }))
+        monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        with patch("app.PN532NFC") as mock_pn532:
+            app._start_nfc_thread(str(config_file))
+        mock_pn532.assert_not_called()

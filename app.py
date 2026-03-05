@@ -1,8 +1,10 @@
 import argparse
 import json
+import logging
 import os
 import secrets
 import subprocess
+import threading
 import time
 from datetime import datetime
 
@@ -17,6 +19,12 @@ app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 TAGS_PATH = os.path.join(os.path.dirname(__file__), "tags.json")
+
+log = logging.getLogger(__name__)
+
+# Shared NFC device and lock used by the background polling thread and web routes.
+_nfc_lock = threading.Lock()
+_nfc = None
 
 
 def _load_config():
@@ -90,6 +98,63 @@ def _make_nfc(config):
                 "run setup.sh on a Raspberry Pi to install them"
             )
     return MockNFC()
+
+
+def _nfc_loop(config_path):
+    """Background NFC polling loop with debounce. Runs in a daemon thread.
+
+    Holds _nfc_lock only during the I2C read (up to 0.5 s). Releases it
+    before calling play_album so web routes never wait on a Sonos network call.
+    """
+    last_tag = None
+    while True:
+        try:
+            with _nfc_lock:
+                tag_data = _nfc.read_tag()
+        except Exception as e:
+            log.error(f"NFC read error: {e}")
+            continue
+
+        if tag_data is None:
+            last_tag = None
+            continue
+
+        if tag_data == last_tag:
+            continue  # same card still present — ignore
+
+        last_tag = tag_data
+        try:
+            tag = parse_tag_data(tag_data)
+            tracks = (apple_music.get_track(tag["id"]) if tag["type"] == "track"
+                      else apple_music.get_album_tracks(tag["id"]))
+            config = _load_config()
+            play_album(config["speaker_ip"], tracks, config["sn"],
+                       speaker_name=config.get("speaker_name"), config_path=config_path)
+            log.info(f"Playing {tag['type']} {tag['id']}")
+        except Exception as e:
+            log.error(f"NFC play error: {e}")
+
+
+def _start_nfc_thread(config_path):
+    """Initialise the shared NFC device and start the background polling thread.
+
+    Only active in pn532 mode. No-op in mock mode so local dev is unaffected.
+    """
+    global _nfc
+    try:
+        config = _load_config()
+    except Exception:
+        return
+    if config.get("nfc_mode") != "pn532":
+        return
+    try:
+        _nfc = PN532NFC()
+    except Exception as e:
+        log.error(f"Failed to initialise PN532: {e}")
+        return
+    t = threading.Thread(target=_nfc_loop, args=(config_path,), daemon=True)
+    t.start()
+    log.info("NFC thread started")
 
 
 def _format_existing_tag(tag_string):
@@ -471,4 +536,5 @@ if __name__ == "__main__":
     parser.add_argument("--host", default="127.0.0.1",
                         help="Host to bind to (use 0.0.0.0 for Pi)")
     args = parser.parse_args()
+    _start_nfc_thread(CONFIG_PATH)
     app.run(host=args.host, port=5000)
