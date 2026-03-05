@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import secrets
-import subprocess
 import threading
 from datetime import datetime
 
@@ -398,24 +397,6 @@ def read_tag():
     return jsonify({"tag_string": tag_string, "tag_type": tag_type, "content_id": content_id,
                     "album": album, "error": None})
 
-
-@app.route("/player/status")
-def player_status():
-    result = subprocess.run(
-        ["systemctl", "is-active", "vinyl-player"],
-        capture_output=True, text=True
-    )
-    return jsonify({"status": result.stdout.strip()})
-
-
-@app.route("/player/control", methods=["POST"])
-def player_control():
-    data = request.get_json()
-    action = data.get("action") if data else None
-    if action not in ("stop", "start"):
-        return jsonify({"error": "invalid action"}), 400
-    subprocess.run(["sudo", "systemctl", action, "vinyl-player"], check=False)
-    return jsonify({"status": "ok", "action": action})
 
 
 @app.route("/detect-sn")
