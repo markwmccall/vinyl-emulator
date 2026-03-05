@@ -255,17 +255,18 @@ def write_tag():
         if not acquired:
             return jsonify({"error": "NFC busy, try again"}), 503
         try:
-            if not force:
-                existing = _nfc.read_tag()
-                if existing:
-                    return jsonify({
-                        "status": "confirm",
-                        "existing": existing,
-                        "existing_display": _format_existing_tag(existing),
-                    })
+            pre_read = _nfc.read_tag()
+            if not force and pre_read:
+                return jsonify({
+                    "status": "confirm",
+                    "existing": pre_read,
+                    "existing_display": _format_existing_tag(pre_read),
+                })
             try:
                 _nfc.write_tag(tag_data)
             except IOError as e:
+                if pre_read is None:
+                    return jsonify({"error": "No tag present — place a card on the reader"}), 409
                 return jsonify({"error": str(e)}), 409
         finally:
             _nfc_lock.release()
@@ -297,10 +298,15 @@ def write_url_tag():
         if not acquired:
             return jsonify({"error": "NFC busy, try again"}), 503
         try:
+            pre_read = _nfc.read_tag()
             try:
                 _nfc.write_url_tag(url)
             except NotImplementedError as e:
                 return jsonify({"error": str(e)}), 501
+            except IOError as e:
+                if pre_read is None:
+                    return jsonify({"error": "No tag present — place a card on the reader"}), 409
+                return jsonify({"error": str(e)}), 409
         finally:
             _nfc_lock.release()
     else:

@@ -224,21 +224,30 @@ class TestWriteTagPN532:
         assert data["status"] == "confirm"
         assert data["existing_display"] == "spotify:album:abc123"
 
-    def test_force_skips_read_and_writes(self, client, tmp_path, monkeypatch):
+    def test_force_overwrites_without_confirm(self, client, tmp_path, monkeypatch):
         mock_nfc = self._pn532_config(tmp_path, monkeypatch)
+        mock_nfc.read_tag.return_value = "apple:1440903625"
         resp = client.post("/write-tag", json={"album_id": "1440903625", "force": True})
         assert resp.status_code == 200
         assert resp.get_json()["status"] == "ok"
-        mock_nfc.read_tag.assert_not_called()
         mock_nfc.write_tag.assert_called_once_with("apple:1440903625")
 
     def test_locked_tag_returns_409(self, client, tmp_path, monkeypatch):
+        # Locked tag has content; force=True skips confirm and attempts write
+        mock_nfc = self._pn532_config(tmp_path, monkeypatch)
+        mock_nfc.read_tag.return_value = "apple:1440903625"
+        mock_nfc.write_tag.side_effect = IOError("Tag is read-only (locked)")
+        resp = client.post("/write-tag", json={"album_id": "1440903625", "force": True})
+        assert resp.status_code == 409
+        assert "locked" in resp.get_json()["error"]
+
+    def test_no_tag_present_returns_409_with_helpful_message(self, client, tmp_path, monkeypatch):
         mock_nfc = self._pn532_config(tmp_path, monkeypatch)
         mock_nfc.read_tag.return_value = None
         mock_nfc.write_tag.side_effect = IOError("Tag is read-only (locked)")
         resp = client.post("/write-tag", json={"album_id": "1440903625"})
         assert resp.status_code == 409
-        assert "locked" in resp.get_json()["error"]
+        assert "No tag present" in resp.get_json()["error"]
 
     def test_lock_busy_returns_503(self, client, tmp_path, monkeypatch):
         import app
