@@ -448,6 +448,16 @@ class TestReadTag:
         data = resp.get_json()
         assert data["error"] is not None
 
+    def test_no_card_returns_null_tag_string(self, client, temp_config):
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = None
+        with patch("app.MockNFC", return_value=mock_nfc):
+            resp = client.get("/read-tag")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["tag_string"] is None
+        assert data["error"] is None
+
     def test_tag_query_param_skips_nfc(self, client, temp_config):
         with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/read-tag?tag=apple:1440903625")

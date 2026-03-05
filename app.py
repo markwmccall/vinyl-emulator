@@ -379,6 +379,9 @@ def read_tag():
                 return jsonify({"tag_string": None, "tag_type": None, "content_id": None,
                                 "album": None, "error": str(e)})
             tag_string = nfc.read_tag()
+    if tag_string is None:
+        return jsonify({"tag_string": None, "tag_type": None, "content_id": None,
+                        "album": None, "error": None})
     try:
         tag = parse_tag_data(tag_string)
     except ValueError as e:
