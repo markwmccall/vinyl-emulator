@@ -173,6 +173,20 @@ class TestWriteTag:
         resp = client.post("/write-tag", json={"other": "value"})
         assert resp.status_code == 400
 
+    def test_mock_ioerror_returns_409(self, client, temp_config, tmp_path, monkeypatch):
+        import app
+        monkeypatch.setattr(app, "TAGS_PATH", str(tmp_path / "tags.json"))
+        mock_nfc = MagicMock()
+        mock_nfc.write_tag.side_effect = IOError("write failed")
+        with patch("app.MockNFC", return_value=mock_nfc):
+            resp = client.post("/write-tag", json={"album_id": "1440903625"})
+        assert resp.status_code == 409
+
+    def test_mock_nfc_init_error_returns_503(self, client, temp_config):
+        with patch("app._make_nfc", side_effect=RuntimeError("not installed")):
+            resp = client.post("/write-tag", json={"album_id": "1440903625"})
+        assert resp.status_code == 503
+
 
 class TestWriteTagPN532:
     """Two-step write-tag flow tests using pn532 mode."""
@@ -285,6 +299,56 @@ class TestWriteUrlTag:
         monkeypatch.setattr(app, "_nfc", mock_nfc)
         resp = client.post("/write-url-tag")
         assert resp.status_code == 501
+
+    def test_mock_not_implemented_returns_501(self, client, temp_config):
+        mock_nfc = MagicMock()
+        mock_nfc.write_url_tag.side_effect = NotImplementedError("not implemented")
+        with patch("app.MockNFC", return_value=mock_nfc):
+            resp = client.post("/write-url-tag")
+        assert resp.status_code == 501
+
+    def test_mock_nfc_init_error_returns_503(self, client, temp_config):
+        with patch("app._make_nfc", side_effect=RuntimeError("not installed")):
+            resp = client.post("/write-url-tag")
+        assert resp.status_code == 503
+
+    def test_pn532_lock_busy_returns_503(self, client, tmp_path, monkeypatch):
+        import app, json
+        config_file = tmp_path / "config_wu.json"
+        config_file.write_text(json.dumps({"sn": "3", "speaker_ip": "10.0.0.12", "nfc_mode": "pn532"}))
+        monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        monkeypatch.setattr(app, "_nfc", MagicMock())
+        mock_lock = MagicMock()
+        mock_lock.acquire.return_value = False
+        monkeypatch.setattr(app, "_nfc_lock", mock_lock)
+        resp = client.post("/write-url-tag")
+        assert resp.status_code == 503
+
+    def test_pn532_ioerror_no_tag_returns_409(self, client, tmp_path, monkeypatch):
+        import app, json
+        config_file = tmp_path / "config_wu2.json"
+        config_file.write_text(json.dumps({"sn": "3", "speaker_ip": "10.0.0.12", "nfc_mode": "pn532"}))
+        monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = None
+        mock_nfc.write_url_tag.side_effect = IOError("write failed")
+        monkeypatch.setattr(app, "_nfc", mock_nfc)
+        resp = client.post("/write-url-tag")
+        assert resp.status_code == 409
+        assert "No tag present" in resp.get_json()["error"]
+
+    def test_pn532_ioerror_locked_tag_returns_409(self, client, tmp_path, monkeypatch):
+        import app, json
+        config_file = tmp_path / "config_wu3.json"
+        config_file.write_text(json.dumps({"sn": "3", "speaker_ip": "10.0.0.12", "nfc_mode": "pn532"}))
+        monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = "apple:1440903625"
+        mock_nfc.write_url_tag.side_effect = IOError("read-only")
+        monkeypatch.setattr(app, "_nfc", mock_nfc)
+        resp = client.post("/write-url-tag")
+        assert resp.status_code == 409
+        assert "read-only" in resp.get_json()["error"]
 
 
 class TestAlbumPage:
@@ -474,6 +538,38 @@ class TestReadTag:
         assert data["tag_string"] == "apple:1440903625"
         assert data["content_id"] == "1440903625"
 
+    def test_pn532_reads_tag(self, client, tmp_path, monkeypatch):
+        import app, json
+        config_file = tmp_path / "config_rt.json"
+        config_file.write_text(json.dumps({"sn": "3", "speaker_ip": "10.0.0.12", "nfc_mode": "pn532"}))
+        monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.return_value = "apple:1440903625"
+        monkeypatch.setattr(app, "_nfc", mock_nfc)
+        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+            resp = client.get("/read-tag")
+        assert resp.status_code == 200
+        assert resp.get_json()["tag_string"] == "apple:1440903625"
+
+    def test_mock_nfc_init_error_returns_error_json(self, client, temp_config):
+        with patch("app._make_nfc", side_effect=RuntimeError("not installed")):
+            resp = client.get("/read-tag")
+        assert resp.status_code == 200
+        assert "not installed" in resp.get_json()["error"]
+
+    def test_pn532_lock_busy_returns_error_json(self, client, tmp_path, monkeypatch):
+        import app, json
+        config_file = tmp_path / "config_rtb.json"
+        config_file.write_text(json.dumps({"sn": "3", "speaker_ip": "10.0.0.12", "nfc_mode": "pn532"}))
+        monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        monkeypatch.setattr(app, "_nfc", MagicMock())
+        mock_lock = MagicMock()
+        mock_lock.acquire.return_value = False
+        monkeypatch.setattr(app, "_nfc_lock", mock_lock)
+        resp = client.get("/read-tag")
+        assert resp.status_code == 200
+        assert "busy" in resp.get_json()["error"]
+
 
 class TestVerify:
     def test_returns_200(self, client, temp_config):
@@ -560,6 +656,17 @@ class TestNowPlaying:
         monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
         resp = client.get("/now-playing")
         assert resp.get_json()["playing"] is False
+
+    def test_get_track_exception_returns_partial_data(self, client, temp_config):
+        with patch("app.get_now_playing", return_value={
+            "title": "Track One", "artist": "Test Artist", "album": "Test Album",
+            "track_id": 1440904001, "paused": False,
+        }), patch("app.apple_music.get_track", side_effect=Exception("network error")):
+            resp = client.get("/now-playing")
+        data = resp.get_json()
+        assert data["playing"] is True
+        assert data["album_id"] is None
+        assert data["artwork_url"] is None
 
 
 class TestHealth:
@@ -952,6 +1059,10 @@ class TestPrintInserts:
         resp = client.get("/print?ids=")
         assert resp.status_code == 400
 
+    def test_non_digit_ids_returns_400(self, client):
+        resp = client.get("/print?ids=abc,def")
+        assert resp.status_code == 400
+
     def test_all_ids_not_found_returns_404(self, client):
         with patch("app.apple_music.get_album_tracks", return_value=[]):
             resp = client.get("/print?ids=9999999")
@@ -1047,3 +1158,64 @@ class TestNfcLoop:
         with patch("app.PN532NFC") as mock_pn532:
             app._start_nfc_thread(str(config_file))
         mock_pn532.assert_not_called()
+
+    def test_read_exception_continues_loop(self, pn532_config, monkeypatch):
+        import app
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.side_effect = [Exception("I2C error"), KeyboardInterrupt]
+        monkeypatch.setattr(app, "_nfc", mock_nfc)
+        with pytest.raises(KeyboardInterrupt):
+            app._nfc_loop(pn532_config)
+
+    def test_play_exception_continues_loop(self, pn532_config, monkeypatch):
+        import app
+        mock_nfc = MagicMock()
+        mock_nfc.read_tag.side_effect = ["apple:1440903625", KeyboardInterrupt]
+        monkeypatch.setattr(app, "_nfc", mock_nfc)
+        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+             patch("app.play_album", side_effect=Exception("Sonos error")):
+            with pytest.raises(KeyboardInterrupt):
+                app._nfc_loop(pn532_config)
+
+    def test_start_nfc_thread_config_fail_returns(self, tmp_path, monkeypatch):
+        import app
+        monkeypatch.setattr(app, "CONFIG_PATH", str(tmp_path / "nonexistent.json"))
+        with patch("app.PN532NFC") as mock_pn532:
+            app._start_nfc_thread(str(tmp_path / "nonexistent.json"))
+        mock_pn532.assert_not_called()
+
+    def test_start_nfc_thread_pn532_init_fail_returns(self, tmp_path, monkeypatch):
+        import app
+        config_file = tmp_path / "config_pn.json"
+        config_file.write_text(json.dumps({
+            "sn": "3", "speaker_ip": "10.0.0.12", "nfc_mode": "pn532",
+        }))
+        monkeypatch.setattr(app, "CONFIG_PATH", str(config_file))
+        with patch("app.PN532NFC", side_effect=Exception("I2C error")), \
+             patch("app.threading.Thread") as mock_thread:
+            app._start_nfc_thread(str(config_file))
+        mock_thread.assert_not_called()
+
+
+class TestMakeNfc:
+    def test_pn532_import_error_raises_runtime_error(self):
+        import app
+        with patch("app.PN532NFC", side_effect=ImportError("no module")):
+            with pytest.raises(RuntimeError, match="not installed"):
+                app._make_nfc({"nfc_mode": "pn532"})
+
+    def test_mock_mode_returns_mock_nfc(self):
+        import app
+        from nfc_interface import MockNFC
+        nfc = app._make_nfc({"nfc_mode": "mock"})
+        assert isinstance(nfc, MockNFC)
+
+
+class TestSigtermHandler:
+    def test_acquires_lock_and_exits(self, monkeypatch):
+        import app
+        mock_lock = MagicMock()
+        monkeypatch.setattr(app, "_nfc_lock", mock_lock)
+        with pytest.raises(SystemExit):
+            app._sigterm_handler(None, None)
+        mock_lock.acquire.assert_called_once()
