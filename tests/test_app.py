@@ -558,23 +558,219 @@ class TestSettingsReboot:
         assert resp.status_code == 403
 
 
+FAKE_HW_STATS = {
+    "hostname": "vinyl-pi", "os": "Raspberry Pi OS 12", "kernel": "6.1.0",
+    "uptime": "2d 3h 5m", "cpu_model": "Raspberry Pi 4 Model B Rev 1.4",
+    "cpu_cores": 4, "cpu_percent": 12.5, "cpu_freq_mhz": 1800, "cpu_temp_c": 48.2,
+    "ram_used": "1.2 GB", "ram_total": "3.7 GB", "ram_percent": 32.4,
+    "swap_used": "0.0 B", "swap_total": "100.0 MB",
+    "disk_used": "8.0 GB", "disk_free": "22.0 GB", "disk_total": "30.0 GB", "disk_percent": 26.7,
+    "nfc_connected": True, "throttle_ok": True, "throttle_flags": [],
+}
+
+
 class TestSettingsHardware:
     def test_get_returns_200(self, client, temp_config):
-        resp = client.get("/settings/hardware")
+        with patch("app._get_hardware_stats", return_value=FAKE_HW_STATS):
+            resp = client.get("/settings/hardware")
         assert resp.status_code == 200
 
     def test_renders_restart_and_reboot_buttons(self, client, temp_config):
-        resp = client.get("/settings/hardware")
+        with patch("app._get_hardware_stats", return_value=FAKE_HW_STATS):
+            resp = client.get("/settings/hardware")
         assert b"/settings/restart" in resp.data
         assert b"/settings/reboot" in resp.data
 
     def test_restarting_query_param_shows_banner(self, client, temp_config):
-        resp = client.get("/settings/hardware?restarting=1")
+        with patch("app._get_hardware_stats", return_value=FAKE_HW_STATS):
+            resp = client.get("/settings/hardware?restarting=1")
         assert b"estarting" in resp.data
 
     def test_rebooting_query_param_shows_banner(self, client, temp_config):
-        resp = client.get("/settings/hardware?rebooting=1")
+        with patch("app._get_hardware_stats", return_value=FAKE_HW_STATS):
+            resp = client.get("/settings/hardware?rebooting=1")
         assert b"ebooting" in resp.data
+
+    def test_renders_hw_stats(self, client, temp_config):
+        with patch("app._get_hardware_stats", return_value=FAKE_HW_STATS):
+            resp = client.get("/settings/hardware")
+        assert b"vinyl-pi" in resp.data
+        assert b"Raspberry Pi 4 Model B" in resp.data
+        assert b"1.2 GB" in resp.data
+        assert b"8.0 GB" in resp.data
+
+    def test_renders_nfc_connected(self, client, temp_config):
+        stats = {**FAKE_HW_STATS, "nfc_connected": True}
+        with patch("app._get_hardware_stats", return_value=stats):
+            resp = client.get("/settings/hardware")
+        assert b"Connected" in resp.data
+
+    def test_renders_nfc_not_connected(self, client, temp_config):
+        stats = {**FAKE_HW_STATS, "nfc_connected": False}
+        with patch("app._get_hardware_stats", return_value=stats):
+            resp = client.get("/settings/hardware")
+        assert b"Not connected" in resp.data
+
+    def test_renders_power_ok(self, client, temp_config):
+        stats = {**FAKE_HW_STATS, "throttle_ok": True, "throttle_flags": []}
+        with patch("app._get_hardware_stats", return_value=stats):
+            resp = client.get("/settings/hardware")
+        assert b"OK" in resp.data
+
+    def test_renders_power_warn(self, client, temp_config):
+        stats = {**FAKE_HW_STATS, "throttle_ok": False,
+                 "throttle_flags": ["Under-voltage detected"]}
+        with patch("app._get_hardware_stats", return_value=stats):
+            resp = client.get("/settings/hardware")
+        assert b"Under-voltage detected" in resp.data
+
+    def test_power_section_hidden_when_unavailable(self, client, temp_config):
+        stats = {**FAKE_HW_STATS, "throttle_ok": None, "throttle_flags": None}
+        with patch("app._get_hardware_stats", return_value=stats):
+            resp = client.get("/settings/hardware")
+        assert b"Under-voltage" not in resp.data
+
+
+class TestGetHardwareStats:
+    def test_returns_dict_with_expected_keys(self):
+        from app import _get_hardware_stats
+        with patch("app.psutil.boot_time", return_value=0), \
+             patch("app.psutil.virtual_memory") as mock_mem, \
+             patch("app.psutil.swap_memory") as mock_swap, \
+             patch("app.psutil.disk_usage") as mock_disk, \
+             patch("app.psutil.cpu_percent", return_value=10.0), \
+             patch("app.psutil.cpu_count", return_value=4), \
+             patch("app.psutil.cpu_freq", return_value=MagicMock(current=1800)), \
+             patch("app.subprocess.run", side_effect=FileNotFoundError), \
+             patch("builtins.open", side_effect=OSError):
+            mock_mem.return_value = MagicMock(used=1e9, total=4e9, percent=25.0)
+            mock_swap.return_value = MagicMock(used=0, total=0)
+            mock_disk.return_value = MagicMock(used=8e9, free=22e9, total=30e9, percent=26.0)
+            stats = _get_hardware_stats()
+        assert "hostname" in stats
+        assert "cpu_percent" in stats
+        assert "ram_used" in stats
+        assert "disk_used" in stats
+        assert "nfc_connected" in stats
+        assert "throttle_ok" in stats
+
+    def test_throttle_ok_parsed(self):
+        from app import _get_hardware_stats
+        mock_result = MagicMock()
+        mock_result.stdout = "throttled=0x0\n"
+        with patch("app.psutil.boot_time", return_value=0), \
+             patch("app.psutil.virtual_memory", return_value=MagicMock(used=0, total=0, percent=0)), \
+             patch("app.psutil.swap_memory", return_value=MagicMock(used=0, total=0)), \
+             patch("app.psutil.disk_usage", return_value=MagicMock(used=0, free=0, total=0, percent=0)), \
+             patch("app.psutil.cpu_percent", return_value=0), \
+             patch("app.psutil.cpu_count", return_value=1), \
+             patch("app.psutil.cpu_freq", return_value=None), \
+             patch("app.subprocess.run", return_value=mock_result), \
+             patch("builtins.open", side_effect=OSError):
+            stats = _get_hardware_stats()
+        assert stats["throttle_ok"] is True
+        assert stats["throttle_flags"] == []
+
+    def test_throttle_warn_parsed(self):
+        from app import _get_hardware_stats
+        mock_result = MagicMock()
+        mock_result.stdout = "throttled=0x50005\n"  # under-voltage + throttled
+        with patch("app.psutil.boot_time", return_value=0), \
+             patch("app.psutil.virtual_memory", return_value=MagicMock(used=0, total=0, percent=0)), \
+             patch("app.psutil.swap_memory", return_value=MagicMock(used=0, total=0)), \
+             patch("app.psutil.disk_usage", return_value=MagicMock(used=0, free=0, total=0, percent=0)), \
+             patch("app.psutil.cpu_percent", return_value=0), \
+             patch("app.psutil.cpu_count", return_value=1), \
+             patch("app.psutil.cpu_freq", return_value=None), \
+             patch("app.subprocess.run", return_value=mock_result), \
+             patch("builtins.open", side_effect=OSError):
+            stats = _get_hardware_stats()
+        assert stats["throttle_ok"] is False
+        assert "Under-voltage detected" in stats["throttle_flags"]
+
+    def test_graceful_on_all_failures(self):
+        from app import _get_hardware_stats
+        with patch("app.psutil.boot_time", side_effect=Exception), \
+             patch("app.psutil.virtual_memory", side_effect=Exception), \
+             patch("app.psutil.swap_memory", side_effect=Exception), \
+             patch("app.psutil.disk_usage", side_effect=Exception), \
+             patch("app.psutil.cpu_percent", side_effect=Exception), \
+             patch("app.psutil.cpu_count", side_effect=Exception), \
+             patch("app.psutil.cpu_freq", side_effect=Exception), \
+             patch("app.subprocess.run", side_effect=Exception), \
+             patch("builtins.open", side_effect=OSError):
+            stats = _get_hardware_stats()
+        assert stats["uptime"] is None
+        assert stats["ram_used"] is None
+        assert stats["throttle_ok"] is None
+
+    def _file_mock(self, **files):
+        """Returns an open() side_effect that serves mock content by path substring."""
+        from io import StringIO
+
+        class _FakeFile:
+            def __init__(self, content):
+                self._content = content
+                self._lines = iter(content.splitlines(keepends=True))
+            def __enter__(self): return self
+            def __exit__(self, *a): pass
+            def __iter__(self): return self._lines
+            def read(self): return self._content
+
+        def dispatch(path, *a, **kw):
+            for key, content in files.items():
+                if key in str(path):
+                    return _FakeFile(content)
+            raise OSError(f"no mock for {path}")
+        return dispatch
+
+    def _base_patches(self):
+        return [
+            patch("app.psutil.boot_time", return_value=0),
+            patch("app.psutil.virtual_memory",
+                  return_value=MagicMock(used=0, total=0, percent=0)),
+            patch("app.psutil.swap_memory", return_value=MagicMock(used=0, total=0)),
+            patch("app.psutil.disk_usage",
+                  return_value=MagicMock(used=0, free=0, total=0, percent=0)),
+            patch("app.psutil.cpu_percent", return_value=0),
+            patch("app.psutil.cpu_count", return_value=1),
+            patch("app.psutil.cpu_freq", return_value=None),
+            patch("app.subprocess.run", side_effect=FileNotFoundError),
+        ]
+
+    def test_reads_os_release(self):
+        from app import _get_hardware_stats
+        import contextlib
+        open_fn = self._file_mock(**{"/etc/os-release": 'PRETTY_NAME="Test OS 12"\nID=test\n'})
+        with contextlib.ExitStack() as stack:
+            for p in self._base_patches():
+                stack.enter_context(p)
+            stack.enter_context(patch("builtins.open", side_effect=open_fn))
+            stats = _get_hardware_stats()
+        assert stats["os"] == "Test OS 12"
+
+    def test_reads_proc_cpuinfo(self):
+        from app import _get_hardware_stats
+        import contextlib
+        cpuinfo = "Serial\t: 0000\nModel\t: Raspberry Pi 4 Model B Rev 1.4\n"
+        open_fn = self._file_mock(**{"/proc/cpuinfo": cpuinfo})
+        with contextlib.ExitStack() as stack:
+            for p in self._base_patches():
+                stack.enter_context(p)
+            stack.enter_context(patch("builtins.open", side_effect=open_fn))
+            stats = _get_hardware_stats()
+        assert stats["cpu_model"] == "Raspberry Pi 4 Model B Rev 1.4"
+
+    def test_reads_cpu_temp(self):
+        from app import _get_hardware_stats
+        import contextlib
+        open_fn = self._file_mock(**{"thermal_zone0/temp": "51234\n"})
+        with contextlib.ExitStack() as stack:
+            for p in self._base_patches():
+                stack.enter_context(p)
+            stack.enter_context(patch("builtins.open", side_effect=open_fn))
+            stats = _get_hardware_stats()
+        assert stats["cpu_temp_c"] == 51.2
 
 
 class TestSettingsRestart:

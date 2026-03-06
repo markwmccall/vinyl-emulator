@@ -8,7 +8,10 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime
+
+import psutil
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
 
@@ -40,6 +43,144 @@ def _load_config():
     if missing:
         raise RuntimeError(f"Missing required config fields: {', '.join(missing)}")
     return config
+
+
+def _fmt_bytes(n):
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if n < 1024:
+            return f"{n:.1f} {unit}"
+        n /= 1024
+    return f"{n:.1f} PB"  # pragma: no cover
+
+
+def _get_hardware_stats():
+    stats = {}
+
+    # System
+    try:
+        stats["hostname"] = os.uname().nodename
+    except Exception:  # pragma: no cover
+        stats["hostname"] = None
+
+    try:
+        with open("/etc/os-release") as f:
+            pairs = {}
+            for line in f:
+                line = line.strip()
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    pairs[k] = v.strip('"')
+        stats["os"] = pairs.get("PRETTY_NAME")
+    except Exception:
+        stats["os"] = None
+
+    try:
+        stats["kernel"] = os.uname().release
+    except Exception:  # pragma: no cover
+        stats["kernel"] = None
+
+    try:
+        uptime_secs = int(time.time() - psutil.boot_time())
+        d, rem = divmod(uptime_secs, 86400)
+        h, rem = divmod(rem, 3600)
+        m = rem // 60
+        parts = []
+        if d:
+            parts.append(f"{d}d")
+        if h:
+            parts.append(f"{h}h")
+        parts.append(f"{m}m")
+        stats["uptime"] = " ".join(parts)
+    except Exception:
+        stats["uptime"] = None
+
+    # Processor
+    try:
+        cpu_model = None
+        with open("/proc/cpuinfo") as f:
+            for line in f:
+                if line.startswith("Model"):
+                    cpu_model = line.split(":", 1)[1].strip()
+                    break
+        stats["cpu_model"] = cpu_model
+    except Exception:
+        stats["cpu_model"] = None
+
+    try:
+        stats["cpu_cores"] = psutil.cpu_count(logical=False) or psutil.cpu_count()
+    except Exception:
+        stats["cpu_cores"] = None
+
+    try:
+        stats["cpu_percent"] = psutil.cpu_percent(interval=0.1)
+    except Exception:
+        stats["cpu_percent"] = None
+
+    try:
+        freq = psutil.cpu_freq()
+        stats["cpu_freq_mhz"] = round(freq.current) if freq else None
+    except Exception:
+        stats["cpu_freq_mhz"] = None
+
+    try:
+        with open("/sys/class/thermal/thermal_zone0/temp") as f:
+            stats["cpu_temp_c"] = round(int(f.read().strip()) / 1000, 1)
+    except Exception:
+        stats["cpu_temp_c"] = None
+
+    # Memory
+    try:
+        mem = psutil.virtual_memory()
+        stats["ram_used"] = _fmt_bytes(mem.used)
+        stats["ram_total"] = _fmt_bytes(mem.total)
+        stats["ram_percent"] = mem.percent
+    except Exception:
+        stats["ram_used"] = stats["ram_total"] = stats["ram_percent"] = None
+
+    try:
+        swap = psutil.swap_memory()
+        stats["swap_used"] = _fmt_bytes(swap.used)
+        stats["swap_total"] = _fmt_bytes(swap.total)
+    except Exception:
+        stats["swap_used"] = stats["swap_total"] = None
+
+    # Storage
+    try:
+        disk = psutil.disk_usage("/")
+        stats["disk_used"] = _fmt_bytes(disk.used)
+        stats["disk_free"] = _fmt_bytes(disk.free)
+        stats["disk_total"] = _fmt_bytes(disk.total)
+        stats["disk_percent"] = disk.percent
+    except Exception:
+        stats["disk_used"] = stats["disk_free"] = stats["disk_total"] = stats["disk_percent"] = None
+
+    # NFC reader
+    stats["nfc_connected"] = _nfc is not None
+
+    # Power throttling (Raspberry Pi only — vcgencmd)
+    try:
+        result = subprocess.run(
+            ["vcgencmd", "get_throttled"],
+            capture_output=True, text=True, timeout=2,
+        )
+        hex_val = result.stdout.strip().split("=")[-1]
+        throttled = int(hex_val, 16)
+        flags = []
+        if throttled & 0x1:     flags.append("Under-voltage detected")
+        if throttled & 0x2:     flags.append("Arm frequency capped")
+        if throttled & 0x4:     flags.append("Currently throttled")
+        if throttled & 0x8:     flags.append("Soft temperature limit active")
+        if throttled & 0x10000: flags.append("Under-voltage has occurred")
+        if throttled & 0x20000: flags.append("Arm frequency has been capped")
+        if throttled & 0x40000: flags.append("Throttling has occurred")
+        if throttled & 0x80000: flags.append("Soft temperature limit has occurred")
+        stats["throttle_ok"] = throttled == 0
+        stats["throttle_flags"] = flags
+    except Exception:
+        stats["throttle_ok"] = None
+        stats["throttle_flags"] = None
+
+    return stats
 
 
 
@@ -433,8 +574,9 @@ def settings_hardware():
         session["csrf_token"] = secrets.token_hex(32)
     restarting = request.args.get("restarting") == "1"
     rebooting = request.args.get("rebooting") == "1"
+    hw = _get_hardware_stats()
     return render_template("settings_hardware.html", csrf_token=session["csrf_token"],
-                           restarting=restarting, rebooting=rebooting)
+                           restarting=restarting, rebooting=rebooting, hw=hw)
 
 
 _PLACEHOLDERS = {

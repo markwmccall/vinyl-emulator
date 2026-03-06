@@ -14,24 +14,122 @@
   <script>history.replaceState(null, '', '/settings/hardware');</script>
   {% endif %}
 
-  <div class="field">
-    <label>Restart App</label>
-    <p class="hint">Restart just the vinyl-web service. Faster than a full reboot - unavailable for ~5 seconds.</p>
-    <form method="POST" action="/settings/restart">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button type="submit" class="save-btn"
-              onclick="return confirm('Restart the vinyl-web service?')">Restart App</button>
-    </form>
+  <div class="hw-section">
+    <div class="hw-section-title">System</div>
+    <div class="hw-row">
+      <span class="hw-label">Hostname</span>
+      <span class="hw-value">{{ hw.hostname or '—' }}</span>
+    </div>
+    <div class="hw-row">
+      <span class="hw-label">OS</span>
+      <span class="hw-value">{{ hw.os or '—' }}</span>
+    </div>
+    <div class="hw-row">
+      <span class="hw-label">Kernel</span>
+      <span class="hw-value">{{ hw.kernel or '—' }}</span>
+    </div>
+    <div class="hw-row">
+      <span class="hw-label">Uptime</span>
+      <span class="hw-value">{{ hw.uptime or '—' }}</span>
+    </div>
   </div>
 
-  <div class="field">
-    <label>Reboot</label>
-    <p class="hint">Restart the Raspberry Pi. The web UI will be unavailable for ~30 seconds.</p>
-    <form method="POST" action="/settings/reboot">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button type="submit" class="save-btn reboot-btn"
-              onclick="return confirm('Reboot the Raspberry Pi?')">Reboot Raspberry Pi</button>
-    </form>
+  <div class="hw-section">
+    <div class="hw-section-title">Processor</div>
+    {% if hw.cpu_model %}
+    <div class="hw-row">
+      <span class="hw-label">Model</span>
+      <span class="hw-value">{{ hw.cpu_model }}</span>
+    </div>
+    {% endif %}
+    <div class="hw-row">
+      <span class="hw-label">Cores</span>
+      <span class="hw-value">{{ hw.cpu_cores or '—' }}</span>
+    </div>
+    <div class="hw-row">
+      <span class="hw-label">Utilization</span>
+      <span class="hw-value">{{ hw.cpu_percent ~ '%' if hw.cpu_percent is not none else '—' }}</span>
+    </div>
+    <div class="hw-row">
+      <span class="hw-label">Frequency</span>
+      <span class="hw-value">{{ hw.cpu_freq_mhz ~ ' MHz' if hw.cpu_freq_mhz else '—' }}</span>
+    </div>
+    <div class="hw-row">
+      <span class="hw-label">Temperature</span>
+      <span class="hw-value">{{ hw.cpu_temp_c ~ ' °C' if hw.cpu_temp_c is not none else '—' }}</span>
+    </div>
+  </div>
+
+  <div class="hw-section">
+    <div class="hw-section-title">Memory</div>
+    <div class="hw-row">
+      <span class="hw-label">RAM</span>
+      <span class="hw-value">
+        {% if hw.ram_used %}{{ hw.ram_used }} / {{ hw.ram_total }} ({{ hw.ram_percent }}%){% else %}—{% endif %}
+      </span>
+    </div>
+    <div class="hw-row">
+      <span class="hw-label">Swap</span>
+      <span class="hw-value">
+        {% if hw.swap_used %}{{ hw.swap_used }} / {{ hw.swap_total }}{% else %}—{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div class="hw-section">
+    <div class="hw-section-title">Storage</div>
+    <div class="hw-row">
+      <span class="hw-label">Disk (/)</span>
+      <span class="hw-value">
+        {% if hw.disk_used %}{{ hw.disk_used }} used / {{ hw.disk_free }} free ({{ hw.disk_percent }}%){% else %}—{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div class="hw-section">
+    <div class="hw-section-title">NFC Reader</div>
+    <div class="hw-row">
+      <span class="hw-label">Status</span>
+      <span class="hw-value {% if hw.nfc_connected %}hw-ok{% else %}hw-warn{% endif %}">
+        {{ 'Connected' if hw.nfc_connected else 'Not connected' }}
+      </span>
+    </div>
+  </div>
+
+  {% if hw.throttle_ok is not none %}
+  <div class="hw-section">
+    <div class="hw-section-title">Power</div>
+    <div class="hw-row">
+      <span class="hw-label">Status</span>
+      {% if hw.throttle_ok %}
+      <span class="hw-value hw-ok">OK</span>
+      {% else %}
+      <span class="hw-value hw-warn">{{ hw.throttle_flags | join(', ') }}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="hw-section hw-actions">
+    <div class="hw-section-title">Actions</div>
+    <div class="field">
+      <label>Restart App</label>
+      <p class="hint">Restart just the vinyl-web service. Faster than a full reboot - unavailable for ~5 seconds.</p>
+      <form method="POST" action="/settings/restart">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="save-btn"
+                onclick="return confirm('Restart the vinyl-web service?')">Restart App</button>
+      </form>
+    </div>
+    <div class="field">
+      <label>Reboot</label>
+      <p class="hint">Restart the Raspberry Pi. The web UI will be unavailable for ~30 seconds.</p>
+      <form method="POST" action="/settings/reboot">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="save-btn reboot-btn"
+                onclick="return confirm('Reboot the Raspberry Pi?')">Reboot Raspberry Pi</button>
+      </form>
+    </div>
   </div>
 </div>
 {% endblock %}
