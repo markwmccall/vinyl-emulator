@@ -419,11 +419,17 @@ def settings_reboot():
                            csrf_token=session["csrf_token"])
 
 
+@app.route("/settings/hardware")
+def settings_hardware():
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+    return render_template("settings_hardware.html", csrf_token=session["csrf_token"])
+
+
 _PLACEHOLDERS = {
-    "update":   ("Update",   "Coming soon - depends on issue #12"),
-    "hardware": ("Hardware", "Coming soon - depends on issue #18"),
-    "storage":  ("Storage",  "Coming soon - depends on issue #18"),
-    "network":  ("Network",  "Coming soon - depends on issue #19"),
+    "update":  ("Update",  "Coming soon - depends on issue #12"),
+    "storage": ("Storage", "Coming soon - depends on issue #18"),
+    "network": ("Network", "Coming soon - depends on issue #19"),
 }
 
 

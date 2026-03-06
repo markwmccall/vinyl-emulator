@@ -419,7 +419,7 @@ class TestSettings:
         assert b"/settings/sonos" in resp.data
         assert b"/settings/nfc" in resp.data
         assert b"/settings/sticker" in resp.data
-        assert b"/settings/reboot" in resp.data
+        assert b"/settings/hardware" in resp.data
 
     def test_shows_speaker_detail(self, client, temp_config):
         resp = client.get("/settings")
@@ -557,8 +557,19 @@ class TestSettingsReboot:
         assert resp.status_code == 403
 
 
+class TestSettingsHardware:
+    def test_get_returns_200(self, client, temp_config):
+        resp = client.get("/settings/hardware")
+        assert resp.status_code == 200
+
+    def test_renders_reboot_button(self, client, temp_config):
+        resp = client.get("/settings/hardware")
+        assert b"Reboot" in resp.data
+        assert b"/settings/reboot" in resp.data
+
+
 class TestSettingsPlaceholder:
-    @pytest.mark.parametrize("section", ["update", "hardware", "storage", "network"])
+    @pytest.mark.parametrize("section", ["update", "storage", "network"])
     def test_known_sections_return_200(self, client, temp_config, section):
         resp = client.get(f"/settings/{section}")
         assert resp.status_code == 200
@@ -568,8 +579,8 @@ class TestSettingsPlaceholder:
         assert resp.status_code == 404
 
     def test_renders_title_and_note(self, client, temp_config):
-        resp = client.get("/settings/hardware")
-        assert b"Hardware" in resp.data
+        resp = client.get("/settings/update")
+        assert b"Update" in resp.data
         assert b"Coming soon" in resp.data
 
 
