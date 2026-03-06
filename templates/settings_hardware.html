@@ -6,6 +6,20 @@
   <a href="{{ url_for('settings') }}" class="settings-back">&#8249; Settings</a>
   <h1>Hardware</h1>
 
+  {% if restarting %}
+  <div class="banner success">Restarting app... the web UI will be unavailable for ~5 seconds.</div>
+  {% endif %}
+
+  <div class="field">
+    <label>Restart App</label>
+    <p class="hint">Restart just the vinyl-web service. Faster than a full reboot - unavailable for ~5 seconds.</p>
+    <form method="POST" action="/settings/restart">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="save-btn"
+              onclick="return confirm('Restart the vinyl-web service?')">Restart App</button>
+    </form>
+  </div>
+
   <div class="field">
     <label>Reboot</label>
     <p class="hint">Restart the Raspberry Pi. The web UI will be unavailable for ~30 seconds.</p>

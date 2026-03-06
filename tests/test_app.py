@@ -562,10 +562,39 @@ class TestSettingsHardware:
         resp = client.get("/settings/hardware")
         assert resp.status_code == 200
 
-    def test_renders_reboot_button(self, client, temp_config):
+    def test_renders_restart_and_reboot_buttons(self, client, temp_config):
         resp = client.get("/settings/hardware")
-        assert b"Reboot" in resp.data
+        assert b"/settings/restart" in resp.data
         assert b"/settings/reboot" in resp.data
+
+
+class TestSettingsRestart:
+    def test_post_calls_systemctl_restart(self, client, temp_config):
+        with client.session_transaction() as sess:
+            sess["csrf_token"] = "test-token"
+        with patch("app.subprocess.Popen") as mock_popen:
+            resp = client.post("/settings/restart", data={"csrf_token": "test-token"})
+        assert resp.status_code == 200
+        mock_popen.assert_called_once_with(["sudo", "systemctl", "restart", "vinyl-web"])
+
+    def test_post_renders_restarting_state(self, client, temp_config):
+        with client.session_transaction() as sess:
+            sess["csrf_token"] = "test-token"
+        with patch("app.subprocess.Popen"):
+            resp = client.post("/settings/restart", data={"csrf_token": "test-token"})
+        assert b"estarting" in resp.data
+
+    def test_post_csrf_missing_returns_403(self, client, temp_config):
+        with client.session_transaction() as sess:
+            sess["csrf_token"] = "test-token"
+        resp = client.post("/settings/restart", data={})
+        assert resp.status_code == 403
+
+    def test_post_csrf_wrong_returns_403(self, client, temp_config):
+        with client.session_transaction() as sess:
+            sess["csrf_token"] = "test-token"
+        resp = client.post("/settings/restart", data={"csrf_token": "wrong"})
+        assert resp.status_code == 403
 
 
 class TestSettingsPlaceholder:

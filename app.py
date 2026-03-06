@@ -419,11 +419,22 @@ def settings_reboot():
                            csrf_token=session["csrf_token"])
 
 
+@app.route("/settings/restart", methods=["POST"])
+def settings_restart():
+    token = request.form.get("csrf_token", "")
+    if not token or token != session.get("csrf_token"):
+        abort(403)
+    subprocess.Popen(["sudo", "systemctl", "restart", "vinyl-web"])
+    return render_template("settings_hardware.html", csrf_token=session.get("csrf_token", ""),
+                           restarting=True)
+
+
 @app.route("/settings/hardware")
 def settings_hardware():
     if "csrf_token" not in session:
         session["csrf_token"] = secrets.token_hex(32)
-    return render_template("settings_hardware.html", csrf_token=session["csrf_token"])
+    return render_template("settings_hardware.html", csrf_token=session["csrf_token"],
+                           restarting=False)
 
 
 _PLACEHOLDERS = {
