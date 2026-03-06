@@ -534,14 +534,15 @@ class TestSettingsReboot:
             sess["csrf_token"] = "test-token"
         with patch("app.subprocess.Popen") as mock_popen:
             resp = client.post("/settings/reboot", data={"csrf_token": "test-token"})
-        assert resp.status_code == 200
+        assert resp.status_code == 302
         mock_popen.assert_called_once_with(["sudo", "reboot"])
 
-    def test_post_renders_rebooting_state(self, client, temp_config):
+    def test_post_redirects_to_hardware_with_rebooting(self, client, temp_config):
         with client.session_transaction() as sess:
             sess["csrf_token"] = "test-token"
         with patch("app.subprocess.Popen"):
-            resp = client.post("/settings/reboot", data={"csrf_token": "test-token"})
+            resp = client.post("/settings/reboot", data={"csrf_token": "test-token"},
+                               follow_redirects=True)
         assert b"ebooting" in resp.data
 
     def test_post_csrf_missing_returns_403(self, client, temp_config):
@@ -567,6 +568,14 @@ class TestSettingsHardware:
         assert b"/settings/restart" in resp.data
         assert b"/settings/reboot" in resp.data
 
+    def test_restarting_query_param_shows_banner(self, client, temp_config):
+        resp = client.get("/settings/hardware?restarting=1")
+        assert b"estarting" in resp.data
+
+    def test_rebooting_query_param_shows_banner(self, client, temp_config):
+        resp = client.get("/settings/hardware?rebooting=1")
+        assert b"ebooting" in resp.data
+
 
 class TestSettingsRestart:
     def test_post_calls_systemctl_restart(self, client, temp_config):
@@ -574,14 +583,15 @@ class TestSettingsRestart:
             sess["csrf_token"] = "test-token"
         with patch("app.subprocess.Popen") as mock_popen:
             resp = client.post("/settings/restart", data={"csrf_token": "test-token"})
-        assert resp.status_code == 200
+        assert resp.status_code == 302
         mock_popen.assert_called_once_with(["sudo", "systemctl", "restart", "vinyl-web"])
 
-    def test_post_renders_restarting_state(self, client, temp_config):
+    def test_post_redirects_to_hardware_with_restarting(self, client, temp_config):
         with client.session_transaction() as sess:
             sess["csrf_token"] = "test-token"
         with patch("app.subprocess.Popen"):
-            resp = client.post("/settings/restart", data={"csrf_token": "test-token"})
+            resp = client.post("/settings/restart", data={"csrf_token": "test-token"},
+                               follow_redirects=True)
         assert b"estarting" in resp.data
 
     def test_post_csrf_missing_returns_403(self, client, temp_config):

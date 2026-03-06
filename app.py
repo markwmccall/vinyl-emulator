@@ -10,7 +10,7 @@ import sys
 import threading
 from datetime import datetime
 
-from flask import Flask, abort, jsonify, render_template, request, session
+from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
 
 import apple_music
 from nfc_interface import MockNFC, PN532NFC, parse_tag_data
@@ -413,8 +413,7 @@ def settings_reboot():
         if not token or token != session.get("csrf_token"):
             abort(403)
         subprocess.Popen(["sudo", "reboot"])
-        return render_template("settings_reboot.html", rebooting=True,
-                               csrf_token=session["csrf_token"])
+        return redirect(url_for("settings_hardware", rebooting=1))
     return render_template("settings_reboot.html", rebooting=False,
                            csrf_token=session["csrf_token"])
 
@@ -425,16 +424,17 @@ def settings_restart():
     if not token or token != session.get("csrf_token"):
         abort(403)
     subprocess.Popen(["sudo", "systemctl", "restart", "vinyl-web"])
-    return render_template("settings_hardware.html", csrf_token=session.get("csrf_token", ""),
-                           restarting=True)
+    return redirect(url_for("settings_hardware", restarting=1))
 
 
 @app.route("/settings/hardware")
 def settings_hardware():
     if "csrf_token" not in session:
         session["csrf_token"] = secrets.token_hex(32)
+    restarting = request.args.get("restarting") == "1"
+    rebooting = request.args.get("rebooting") == "1"
     return render_template("settings_hardware.html", csrf_token=session["csrf_token"],
-                           restarting=False)
+                           restarting=restarting, rebooting=rebooting)
 
 
 _PLACEHOLDERS = {

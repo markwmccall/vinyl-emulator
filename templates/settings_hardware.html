@@ -8,6 +8,8 @@
 
   {% if restarting %}
   <div class="banner success">Restarting app... the web UI will be unavailable for ~5 seconds.</div>
+  {% elif rebooting %}
+  <div class="banner success">Rebooting... the server will be unavailable for ~30 seconds.</div>
   {% endif %}
 
   <div class="field">
