@@ -43,19 +43,12 @@ def probe(speaker_ip, sn, query):
     print(f"    soco.music_services exports: {[x for x in dir(ms_module) if not x.startswith('_')]}")
     print(f"    MusicService.__init__ signature: {inspect.signature(MusicService.__init__)}")
 
-    # Try instantiating with no extra args
+    # Instantiate with device= so SMAPI calls are authenticated via the speaker
     try:
-        svc = MusicService(service_name)
+        svc = MusicService(service_name, device=speaker)
     except Exception as e:
-        print(f"    MusicService(name) failed: {e}")
-        # Try getting it from the speaker
-        try:
-            all_svcs = {s.service_name: s for s in MusicService.get_all_music_services()}
-            print(f"    get_all_music_services keys: {list(all_svcs.keys())[:5]}")
-            svc = all_svcs.get(service_name)
-        except Exception as e2:
-            print(f"    get_all_music_services failed: {e2}")
-            svc = None
+        print(f"    MusicService(name, device=speaker) failed: {e}")
+        svc = None
 
     if svc is None:
         print("    Could not get MusicService instance — aborting search tests.")
