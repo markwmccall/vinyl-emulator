@@ -37,23 +37,38 @@ def probe(speaker_ip, sn, query):
     service_name = apple_names[0]
     print(f"\n--- Using service: '{service_name}' ---")
 
-    # Find the linked account for Apple Music on this speaker
-    try:
-        from soco.music_services import MusicServiceAccount
-        all_accounts = MusicServiceAccount.get_accounts()
-        print(f"    All accounts: {list(all_accounts.keys())}")
-        account = all_accounts.get(service_name)
-        print(f"    Account for '{service_name}': {account}")
-    except Exception as e:
-        account = None
-        print(f"    (could not get accounts: {e})")
+    # Introspect soco.music_services to find the right API
+    import inspect
+    import soco.music_services as ms_module
+    print(f"    soco.music_services exports: {[x for x in dir(ms_module) if not x.startswith('_')]}")
+    print(f"    MusicService.__init__ signature: {inspect.signature(MusicService.__init__)}")
 
-    svc = MusicService(service_name, account=account)
+    # Try instantiating with no extra args
+    try:
+        svc = MusicService(service_name)
+    except Exception as e:
+        print(f"    MusicService(name) failed: {e}")
+        # Try getting it from the speaker
+        try:
+            all_svcs = {s.service_name: s for s in MusicService.get_all_music_services()}
+            print(f"    get_all_music_services keys: {list(all_svcs.keys())[:5]}")
+            svc = all_svcs.get(service_name)
+        except Exception as e2:
+            print(f"    get_all_music_services failed: {e2}")
+            svc = None
+
+    if svc is None:
+        print("    Could not get MusicService instance — aborting search tests.")
+        return
 
     # Show service info
     try:
         print(f"    Service ID: {svc.service_id}")
-        print(f"    Account: {svc.account}")
+        for attr in ('account', 'service_type', 'username'):
+            try:
+                print(f"    {attr}: {getattr(svc, attr)}")
+            except Exception:
+                pass
     except Exception as e:
         print(f"    (could not read service metadata: {e})")
 
