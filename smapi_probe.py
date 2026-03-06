@@ -118,6 +118,39 @@ def probe(speaker_ip, sn, query):
     except Exception as e:
         print(f"    Library browse failed: {e}")
 
+    # --- Try ContentDirectory / music_library browse ---
+    print(f"\n--- Browsing Sonos ContentDirectory (UPnP) ---")
+    try:
+        result = speaker.music_library.get_music_library_information(
+            "A:ALBUMS", start=0, max_items=5, search_term=query
+        )
+        print(f"    A:ALBUMS search '{query}': {len(result)} result(s)")
+        for i, item in enumerate(result[:3]):
+            attrs = {k: v for k, v in vars(item).items() if not k.startswith("_")}
+            print(json.dumps(attrs, default=str, indent=6))
+    except Exception as e:
+        print(f"    A:ALBUMS search failed: {e}")
+
+    try:
+        result = speaker.music_library.get_music_library_information(
+            "A:PLAYLISTS", start=0, max_items=10
+        )
+        print(f"\n    A:PLAYLISTS: {len(result)} result(s)")
+        for i, item in enumerate(result[:5]):
+            attrs = {k: v for k, v in vars(item).items() if not k.startswith("_")}
+            print(json.dumps(attrs, default=str, indent=6))
+    except Exception as e:
+        print(f"    A:PLAYLISTS failed: {e}")
+
+    try:
+        favs = speaker.music_library.get_sonos_favorites()
+        print(f"\n    Sonos Favorites: {len(favs)} item(s)")
+        for i, item in enumerate(list(favs)[:5]):
+            attrs = {k: v for k, v in vars(item).items() if not k.startswith("_")}
+            print(json.dumps(attrs, default=str, indent=6))
+    except Exception as e:
+        print(f"    Sonos Favorites failed: {e}")
+
     print("\n--- Done ---\n")
 
 
