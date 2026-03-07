@@ -87,12 +87,11 @@ sudo journalctl -u vinyl-web -f   # follow logs
 
 ## Creating a release
 
-1. Update the `VERSION` file with the new version (e.g. `1.0.0`)
-2. Commit and push
-3. Push a matching tag:
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
+Releases are created via GitHub Actions. Only the repo owner can approve them.
 
-GitHub Actions runs the tests, verifies the tag matches `VERSION`, and creates the GitHub Release automatically.
+1. Go to **Actions → Release → Run workflow**
+2. Enter the version number (e.g. `1.0.0`)
+3. Click **Run workflow**
+4. Approve the deployment when prompted
+
+The workflow runs the tests, updates the `VERSION` file, commits, tags, and creates the GitHub Release automatically.
