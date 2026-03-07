@@ -93,7 +93,7 @@
         if (data.state === 'running') {
           setTimeout(pollUpdate, 2000);
         } else {
-          window.location.reload();
+          window.location.href = '/settings/update';
         }
       })
       .catch(() => setTimeout(pollUpdate, 3000));
