@@ -24,6 +24,24 @@ A Flask web app running on the same Pi lets you:
 
 ---
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><strong>Search</strong><br><img src="static/screenshots/search.png" width="420" alt="Search page"></td>
+    <td align="center"><strong>Collection</strong><br><img src="static/screenshots/collection.png" width="420" alt="Collection page"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Verify Tag</strong><br><img src="static/screenshots/verify.png" width="420" alt="Verify Tag page"></td>
+    <td align="center"><strong>Settings</strong><br><img src="static/screenshots/settings.png" width="420" alt="Settings page"></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><strong>Hardware Info</strong><br><img src="static/screenshots/settings_hardware.png" width="420" alt="Hardware settings page"></td>
+  </tr>
+</table>
+
+---
+
 ## Hardware
 
 | Item | Notes | Approx. Price |
