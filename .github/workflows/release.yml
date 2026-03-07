@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version number (e.g. 1.0.0)"
+        description: "Version number (e.g. 1.0.0) — must match VERSION file on main"
         required: true
 
 jobs:
@@ -16,8 +16,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify VERSION file matches input
+        run: |
+          FILE_VERSION="$(cat VERSION)"
+          if [ "$FILE_VERSION" != "${{ github.event.inputs.version }}" ]; then
+            echo "Error: VERSION file contains '$FILE_VERSION' but input is '${{ github.event.inputs.version }}'"
+            echo "Update and commit the VERSION file first, then run this workflow."
+            exit 1
+          fi
+          echo "VERSION verified: $FILE_VERSION"
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -32,23 +40,14 @@ jobs:
       - name: Run tests
         run: python -m pytest tests/ -v
 
-      - name: Update VERSION file
-        run: echo "${{ github.event.inputs.version }}" > VERSION
-
-      - name: Commit and tag
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add VERSION
-          git commit -m "Release v${{ github.event.inputs.version }}"
-          git tag "v${{ github.event.inputs.version }}"
-          git push origin main
-          git push origin "v${{ github.event.inputs.version }}"
-
-      - name: Create GitHub Release
+      - name: Tag and release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ github.event.inputs.version }}"
+          git push origin "v${{ github.event.inputs.version }}"
           gh release create "v${{ github.event.inputs.version }}" \
             --title "Vinyl Emulator v${{ github.event.inputs.version }}" \
             --generate-notes

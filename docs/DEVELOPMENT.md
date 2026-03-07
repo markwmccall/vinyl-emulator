@@ -89,9 +89,9 @@ sudo journalctl -u vinyl-web -f   # follow logs
 
 Releases are created via GitHub Actions. Only the repo owner can approve them.
 
-1. Go to **Actions → Release → Run workflow**
-2. Enter the version number (e.g. `1.0.0`)
-3. Click **Run workflow**
+1. Update the `VERSION` file with the new version (e.g. `1.0.0`), commit and push to main
+2. Go to **Actions → Release → Run workflow**
+3. Enter the same version number
 4. Approve the deployment when prompted
 
-The workflow runs the tests, updates the `VERSION` file, commits, tags, and creates the GitHub Release automatically.
+The workflow verifies the input matches `VERSION`, runs the tests, creates the tag, and publishes the GitHub Release.
