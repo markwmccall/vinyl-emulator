@@ -633,14 +633,29 @@ def _check_for_update() -> dict:
 
 
 def _read_update_state():
-    """Return (state, log_lines) from update.log. state is 'idle' if no log."""
+    """Return (state, log_lines) from update.log. state is 'idle' if no log.
+
+    If state is 'running' but the recorded PID is no longer alive, treats the
+    state as 'failed' so a crashed updater doesn't permanently show 'updating'.
+    """
     if not UPDATE_LOG.exists():
         return "idle", []
     lines = UPDATE_LOG.read_text().splitlines()
     state = "idle"
+    pid = None
     for line in lines:
+        if line.startswith("PID:"):
+            try:
+                pid = int(line.split(":", 1)[1].strip())
+            except ValueError:
+                pass
         if line.startswith("STATE:"):
             state = line.split(":", 1)[1].strip()
+    if state == "running" and pid is not None:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            state = "failed"
     return state, lines[-20:]
 
 

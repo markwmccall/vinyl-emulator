@@ -1878,6 +1878,39 @@ class TestUpdateStatus:
         data = resp.get_json()
         assert any("Fetching" in line for line in data["log"])
 
+    def test_stale_pid_returns_failed(self, client, tmp_path, monkeypatch):
+        """If STATE: running but PID is dead, state should be 'failed'."""
+        import app
+        log = tmp_path / "update.log"
+        # Use PID 1 which always exists, then mock os.kill to simulate dead PID
+        log.write_text("STATE: running\nPID: 99999999\nDownloading...\n")
+        monkeypatch.setattr(app, "UPDATE_LOG", log)
+        with patch("app.os.kill", side_effect=ProcessLookupError):
+            resp = client.get("/update/status")
+        data = resp.get_json()
+        assert data["state"] == "failed"
+
+    def test_running_with_live_pid_stays_running(self, client, tmp_path, monkeypatch):
+        """If STATE: running and PID is alive, state stays 'running'."""
+        import app
+        log = tmp_path / "update.log"
+        log.write_text("STATE: running\nPID: 99999999\nDownloading...\n")
+        monkeypatch.setattr(app, "UPDATE_LOG", log)
+        with patch("app.os.kill", return_value=None):  # PID alive — no exception
+            resp = client.get("/update/status")
+        data = resp.get_json()
+        assert data["state"] == "running"
+
+    def test_running_without_pid_stays_running(self, client, tmp_path, monkeypatch):
+        """Old-format log with no PID line: no stale detection, state stays 'running'."""
+        import app
+        log = tmp_path / "update.log"
+        log.write_text("STATE: running\nDownloading...\n")
+        monkeypatch.setattr(app, "UPDATE_LOG", log)
+        resp = client.get("/update/status")
+        data = resp.get_json()
+        assert data["state"] == "running"
+
 
 class TestUpdateAuto:
     def test_missing_csrf_returns_403(self, client, temp_config):

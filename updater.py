@@ -8,6 +8,7 @@ Usage: python3 updater.py <target_version>
 Writes progress to stdout (app.py redirects this to update.log).
 STATE: lines are parsed by /update/status to track progress.
 """
+import os
 import subprocess
 import sys
 import time
@@ -29,6 +30,7 @@ def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
 
 def main(target_version: str) -> None:
     print(f"STATE: running", flush=True)
+    print(f"PID: {os.getpid()}", flush=True)
     print(f"Updating to v{target_version}", flush=True)
 
     # Save rollback point
