@@ -49,7 +49,13 @@ Download [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Select **
 
 ### 2. Assemble the hardware
 
-Attach the PN532 NFC HAT to the Pi's 40-pin GPIO header. Before powering on, set the HAT's interface switches to **I2C** — refer to the [Waveshare PN532 HAT wiki](https://www.waveshare.com/wiki/PN532_NFC_HAT) for the exact switch positions.
+Attach the PN532 NFC HAT to the Pi's 40-pin GPIO header. Before powering on, configure the HAT jumpers as described in the [Waveshare PN532 HAT wiki](https://www.waveshare.com/wiki/PN532_NFC_HAT):
+
+1. **Set I2C mode** — set I0 to H and I1 to L using the mode jumper caps.
+2. **Connect RSTPDN to D20** — enables software reset of the PN532 after failures.
+3. **Connect INT0 to D16** — connects the interrupt pin; avoids I2C clock stretching and prevents the bus hang that otherwise requires a power cycle to recover.
+
+> Steps 2 and 3 are optional per the Waveshare docs but **strongly recommended** — they allow the software to recover from NFC read failures automatically without a power cycle.
 
 Insert the SD card and power on. Wait about 60 seconds, then SSH in:
 
@@ -95,10 +101,16 @@ Open `http://your-hostname.local` in your browser, go to **Settings → Update**
 - Try the IP address directly if mDNS isn't resolving
 
 **HAT not detected**
-- Confirm the interface switches on the HAT are set to I2C (not SPI or UART)
+- Confirm the mode jumpers on the HAT are set to I2C (I0=H, I1=L) — see the [Waveshare PN532 HAT wiki](https://www.waveshare.com/wiki/PN532_NFC_HAT)
 - Check the HAT is firmly seated — all 40 pins engaged
 - Verify with `sudo i2cdetect -y 1` — PN532 should appear at address `0x24`
-- If still not detected, a full power down and unplug is sometimes necessary — a reboot alone is not always enough
+- If `i2cdetect` hangs for over a minute and shows nothing at `0x24`, the I2C bus is locked up — power cycle the Pi (unplug and replug power; a reboot alone is not enough)
+
+**NFC reader stops working / requires power cycle to recover**
+- This is almost always an I2C bus hang caused by the PN532 clock-stretching the SCL line
+- **Fix:** Connect the INT0 jumper to D16 (GPIO16) on the HAT — this switches the reader from clock-stretch polling to interrupt-driven mode and prevents the hang. See step 2 in [Assemble the hardware](#2-assemble-the-hardware) above.
+- After updating the firmware, also connect RSTPDN to D20 (GPIO20) so the software can reset the reader automatically without a power cycle
+- If the jumpers are already set and the bus is currently hung: power cycle the Pi, then check the jumpers
 
 **Music doesn't play after tapping a card**
 - Check `sudo systemctl status vinyl-web` for errors

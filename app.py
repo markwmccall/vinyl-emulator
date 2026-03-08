@@ -52,6 +52,12 @@ _nfc_last_tag = None       # debounce: last tag seen by the loop
 _web_read_pending = False  # True while /read-tag is waiting for a card
 _nfc_read_queue = queue.Queue(maxsize=1)  # loop posts here when _web_read_pending
 
+# Watchdog: after this many consecutive I2C errors, log a "power cycle required"
+# warning and back off polling. Requires BCM2835 I2C timeout to be set so the
+# ioctl actually returns an error instead of blocking forever — see setup.sh.
+_NFC_MAX_CONSECUTIVE_ERRORS = 5
+_NFC_BACKOFF_SECS = 30
+
 
 def _load_config():
     with open(CONFIG_PATH) as f:
@@ -253,14 +259,45 @@ def _nfc_loop(config_path):
 
     When _web_read_pending is set, the loop delivers the next read result to
     _nfc_read_queue instead of playing, eliminating the race with /read-tag.
+
+    Tracks consecutive I2C errors. After _NFC_MAX_CONSECUTIVE_ERRORS failures
+    it logs a "power cycle required" warning and backs off to _NFC_BACKOFF_SECS
+    between retries. This requires the BCM2835 I2C hardware timeout to be set
+    (see setup.sh) so a clock-stretched PN532 returns an OSError instead of
+    blocking the thread forever.
     """
     global _nfc_last_tag
+    consecutive_errors = 0
     while True:
         try:
             with _nfc_lock:
                 tag_data = _nfc.read_tag()
+            if consecutive_errors:
+                log.info("NFC reader recovered after %d consecutive errors", consecutive_errors)
+            consecutive_errors = 0
         except Exception as e:
-            log.error(f"NFC read error: {e}")
+            consecutive_errors += 1
+            if consecutive_errors < _NFC_MAX_CONSECUTIVE_ERRORS:
+                log.error("NFC read error: %s", e)
+            elif consecutive_errors == _NFC_MAX_CONSECUTIVE_ERRORS:
+                log.error(
+                    "NFC reader unresponsive after %d consecutive errors (%s). "
+                    "Attempting hardware reset via RSTPDN pin.",
+                    consecutive_errors, e,
+                )
+                try:
+                    _nfc.reset()
+                    log.info("PN532 hardware reset successful")
+                    consecutive_errors = 0
+                    continue  # retry immediately, skip backoff
+                except Exception as reset_err:
+                    log.error(
+                        "PN532 reset failed (%s) — power cycle the Pi to recover. "
+                        "Will keep retrying every %ds.",
+                        reset_err, _NFC_BACKOFF_SECS,
+                    )
+            if consecutive_errors >= _NFC_MAX_CONSECUTIVE_ERRORS:
+                time.sleep(_NFC_BACKOFF_SECS)
             continue
 
         if tag_data is None:

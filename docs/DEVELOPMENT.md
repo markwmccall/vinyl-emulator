@@ -33,7 +33,7 @@ python3 app.py --host 0.0.0.0
 ## Tests
 
 ```bash
-python -m pytest tests/ -v
+.venv/bin/python -m pytest tests/ -v
 ```
 
 All tests must pass before committing.
