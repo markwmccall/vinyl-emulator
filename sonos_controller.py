@@ -130,19 +130,20 @@ def set_volume(speaker_ip, value, speaker_name=None, config_path=None):
 
 
 def _do_play_album(speaker, track_dicts, provider, sn):
-    udn = provider.lookup_udn(speaker, sn)
-    speaker.clear_queue()
+    coordinator = speaker.group.coordinator
+    udn = provider.lookup_udn(coordinator, sn)
+    coordinator.clear_queue()
     for track in track_dicts:
         uri = provider.build_track_uri(track["track_id"], sn)
         metadata = provider.build_track_didl(track, udn)
-        speaker.avTransport.AddURIToQueue([
+        coordinator.avTransport.AddURIToQueue([
             ("InstanceID", 0),
             ("EnqueuedURI", uri),
             ("EnqueuedURIMetaData", metadata),
             ("DesiredFirstTrackNumberEnqueued", 0),
             ("EnqueueAsNext", 0),
         ])
-    speaker.play_from_queue(0)
+    coordinator.play_from_queue(0)
 
 
 def play_album(speaker_ip, track_dicts, provider, sn, speaker_name=None, config_path=None):

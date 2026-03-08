@@ -100,6 +100,7 @@ SAMPLE_LOOKUP_RESPONSE = {
 @pytest.fixture
 def mock_speaker(mocker):
     speaker = MagicMock()
+    speaker.group.coordinator = speaker  # speaker is its own coordinator (solo/ungrouped)
     mocker.patch("soco.SoCo", return_value=speaker)
     return speaker
 

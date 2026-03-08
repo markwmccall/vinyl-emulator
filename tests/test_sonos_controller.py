@@ -257,8 +257,10 @@ class TestSpeakerSelfHealing:
         config_file = self._make_config(tmp_path)
 
         old_speaker = MagicMock()
+        old_speaker.group.coordinator = old_speaker
         old_speaker.clear_queue.side_effect = Exception("connection refused")
         new_speaker = MagicMock()
+        new_speaker.group.coordinator = new_speaker
         mocker.patch("soco.SoCo", side_effect=[old_speaker, new_speaker])
         mocker.patch("soco.discover", return_value={self._mock_device()})
 
@@ -273,8 +275,10 @@ class TestSpeakerSelfHealing:
         config_file = self._make_config(tmp_path)
 
         old_speaker = MagicMock()
+        old_speaker.group.coordinator = old_speaker
         old_speaker.clear_queue.side_effect = Exception("connection refused")
         new_speaker = MagicMock()
+        new_speaker.group.coordinator = new_speaker
         mocker.patch("soco.SoCo", side_effect=[old_speaker, new_speaker])
         mocker.patch("soco.discover", return_value={self._mock_device(ip="10.0.0.99")})
 
@@ -290,6 +294,7 @@ class TestSpeakerSelfHealing:
         config_file = self._make_config(tmp_path)
 
         old_speaker = MagicMock()
+        old_speaker.group.coordinator = old_speaker
         old_speaker.clear_queue.side_effect = Exception("connection refused")
         mocker.patch("soco.SoCo", return_value=old_speaker)
         mocker.patch("soco.discover", return_value={self._mock_device(name="Other Room")})
