@@ -37,6 +37,16 @@ fi
 # Pull latest before releasing
 git pull --ff-only
 
+# Check tag doesn't already exist (local or remote)
+if git rev-parse "$TAG" >/dev/null 2>&1; then
+  echo "Error: tag $TAG already exists locally"
+  exit 1
+fi
+if git ls-remote --tags origin | grep -q "refs/tags/$TAG$"; then
+  echo "Error: tag $TAG already exists on remote"
+  exit 1
+fi
+
 echo "Releasing $TAG..."
 
 # Update VERSION file
