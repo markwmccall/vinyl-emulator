@@ -230,6 +230,21 @@ soco's token store, searches fail with `AuthTokenExpired` due to this mismatch.
 
 ---
 
+## Sonos S2 Change (May 2024): SMAPI Now Requires Public HTTPS
+
+**Breaking change for local Pi deployments.** As of the S2 app update (May 2024),
+Sonos routes SMAPI traffic through its cloud infrastructure, which means:
+
+- SMAPI services must be exposed to the internet with a valid HTTPS certificate
+- Local-only SMAPI implementations (LAN only, no port forwarding) no longer work on S2
+- S1 devices are unaffected
+
+This fundamentally changes the viability of running a custom SMAPI service on a Pi
+behind a home NAT. Workarounds include Cloudflare Tunnel, ngrok, or a VPS reverse
+proxy — but all require the Pi's SMAPI endpoint to be publicly reachable.
+
+---
+
 ## Recommended Path Forward: Sonos Control API
 
 Register at [developer.sonos.com](https://developer.sonos.com) as a **Control
@@ -243,9 +258,66 @@ Integration**. This provides:
 This is how Sonify and similar apps work. Sonos handles the music service
 authentication internally using the household's stored credentials.
 
-**Registration note:** The developer portal requires company information. For
-individual/hobby projects this is a friction point. Registration was started
-but not completed as of this writing.
+**Registration status (2024–2025):** The approval process is slow and opaque.
+Developers have reported registrations remaining "under analysis" indefinitely.
+There is no explicit hobby/individual tier. Registration was started but not
+completed as of this writing.
+
+---
+
+## Alternative: Apple MusicKit API (Hybrid Approach)
+
+Apple's MusicKit API can search personal library directly, without Sonos involvement.
+
+### Key endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /v1/me/library/search` | Search personal library |
+| `GET /v1/me/library/albums` | All library albums |
+| `GET /v1/me/library/playlists` | All playlists |
+| `GET /v1/me/library/songs` | All songs |
+
+Search types: `library-albums`, `library-songs`, `library-artists`, `library-playlists`
+
+### Authentication requirements
+
+- **Developer Token**: JWT (ES256) signed with a MusicKit private key from Apple
+  Developer portal. ~6-month lifetime. Requires $99/year Apple Developer membership.
+- **Music User Token**: Per-user OAuth token obtained via MusicKit authorization
+  flow. Added as `music-user-token` header. ~6-month lifetime, must reauthenticate
+  on expiry.
+
+### Hybrid architecture
+
+Use MusicKit for **search** (catalog + personal library), then construct Sonos
+track URIs using the same format already implemented:
+
+```
+x-sonos-http:song%3a{track_id}.mp4?sid=204&flags=8232&sn={sn}
+```
+
+The track IDs returned by MusicKit match iTunes catalog IDs exactly (for catalog
+content). For personal library items the IDs are library-specific and may not
+be playable via the existing URI format — further investigation needed.
+
+### Feasibility for this project
+
+- Requires user to authorize with Apple once (web OAuth flow from the Pi web UI)
+- Music User Token must be stored securely and refreshed every ~6 months
+- Gives access to full personal library and playlists — not possible via iTunes
+  Search API
+- No Sonos registration or SMAPI required
+
+---
+
+## Community Tools
+
+| Tool | Description | Status |
+|------|-------------|--------|
+| [bonob](https://github.com/simojenki/bonob) | SMAPI proxy for Subsonic-compatible servers (Navidrome, Gonic) | Active; requires public HTTPS for S2 |
+| [node-sonos-http-api](https://github.com/jishi/node-sonos-http-api) | HTTP API for Sonos automation; `/musicsearch/{service}/{type}/{term}` | Uses iTunes catalog, not personal library |
+| [YouTubeSonos](https://github.com/robertdejong1/YouTubeSonos) | SMAPI implementation for YouTube Music | Shows SMAPI endpoint structure |
 
 ---
 
@@ -254,3 +326,5 @@ but not completed as of this writing.
 - [sonos.svrooij.io](https://sonos.svrooij.io) — Unofficial UPnP API documentation
 - [docs.sonos.com/docs/smapi](https://docs.sonos.com/docs/smapi) — Official SMAPI spec
 - [developer.sonos.com](https://developer.sonos.com) — Sonos developer portal
+- [Apple Music API](https://developer.apple.com/documentation/applemusicapi/) — MusicKit REST API reference
+- [Apple MusicKit](https://developer.apple.com/musickit/) — MusicKit developer overview
