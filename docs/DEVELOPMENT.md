@@ -87,11 +87,21 @@ sudo journalctl -u vinyl-web -f   # follow logs
 
 ## Creating a release
 
-1. Update the `VERSION` file with the new version (e.g. `1.0.0`), commit and push to main
-2. Push a matching tag:
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
+```bash
+./release.sh 1.0.0
+```
 
-GitHub Actions runs the tests, verifies the tag matches `VERSION`, and creates the GitHub Release automatically.
+This updates `VERSION`, commits, pushes, and creates the tag. GitHub Actions then runs tests and publishes the GitHub Release automatically.
+
+## Reference
+
+| Topic | Link |
+|-------|------|
+| **SoCo** (Sonos Python library) | [github.com/SoCo/SoCo](https://github.com/SoCo/SoCo) · [docs.python-soco.com](https://docs.python-soco.com) |
+| **iTunes Search API** | [developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/index.html) |
+| **Sonos UPnP / SMAPI** | [developer.sonos.com](https://developer.sonos.com) · [soco.readthedocs.io/en/latest/api/soco.music_services](https://soco.readthedocs.io/en/latest/api/soco.music_services.html) |
+| **PN532 NFC HAT** | [Waveshare PN532 HAT wiki](https://www.waveshare.com/wiki/PN532_NFC_HAT) |
+| **Adafruit CircuitPython PN532** | [github.com/adafruit/Adafruit_CircuitPython_PN532](https://github.com/adafruit/Adafruit_CircuitPython_PN532) |
+| **NDEF / NFC Data Exchange Format** | [ndeflib.readthedocs.io](https://ndeflib.readthedocs.io) |
+| **Flask** | [flask.palletsprojects.com](https://flask.palletsprojects.com) |
+| **Raspberry Pi I2C** | [raspberrypi.com/documentation/computers/raspberry-pi.html](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#i2c) |
