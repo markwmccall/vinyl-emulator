@@ -296,6 +296,86 @@ completed as of this writing.
 
 ---
 
+## Music Assistant: How It Actually Works
+
+[GitHub: music-assistant/server](https://github.com/music-assistant/server)
+
+Music Assistant is the most complete open-source reference implementation for
+multi-service music search + Sonos playback. Key findings from the source code:
+
+### Architecture
+
+- **Search**: Implemented entirely internally. MA authenticates directly with each
+  music service and syncs their content into its own local database. Sonos is never
+  involved in search.
+- **Playback**: Uses `aiosonos` (a WebSocket-based library, NOT soco) to control
+  Sonos speakers over the local network. Sonos is purely a playback device.
+- **No SMAPI**: MA does not implement SMAPI at all, so the S2 public HTTPS
+  requirement is irrelevant to its architecture.
+
+### Spotify authentication (source: `providers/spotify/`)
+
+Uses **OAuth 2.0 with PKCE**. The redirect URI is hardcoded to
+`https://music-assistant.io/callback` — a central endpoint the MA team hosts.
+
+Flow:
+1. MA generates a PKCE pair and constructs the Spotify auth URL with
+   `redirect_uri=https://music-assistant.io/callback` and
+   `state={local_callback_url}` (the local MA server's callback URL)
+2. User authorizes in browser; Spotify redirects to `music-assistant.io/callback`
+3. That hosted page reads the `state` param and redirects again to the local MA
+   server's `/callback/{session_id}` route
+4. MA's `AuthenticationHelper` captures the auth code and exchanges it for tokens
+5. Refresh token stored in encrypted config; auto-refreshed on demand
+
+The `state` parameter double-redirect is the mechanism that bridges the public
+redirect URI back to the local server.
+
+### Apple Music authentication (source: `providers/apple_music/`)
+
+Uses **MusicKit JS** in a popup window — not a simple cookie extraction.
+
+Flow:
+1. MA opens a popup serving a local HTML page (`musickit_wrapper.html`)
+2. The page loads Apple's MusicKit JS library and calls `music.authorize()`
+3. MusicKit handles the Apple ID sign-in flow internally (within the popup)
+4. On success, MusicKit returns a `music-user-token`; the page POSTs it back to
+   MA's local `/callback/{session_id}` route
+5. MA stores the token in encrypted config
+
+MA uses a **shared app/developer token** (a JWT rotated via GitHub Actions) so
+users don't need an Apple Developer account. The `music-user-token` expires after
+~180 days and requires manual re-auth.
+
+### AuthenticationHelper (source: `helpers/auth.py`)
+
+A generic context manager used by all OAuth flows:
+- Registers a dynamic route at `/callback/{session_id}` on the local MA server
+- Supports both GET (query params) and POST (JSON body) callbacks
+- Waits with a configurable timeout (default 60s) for the browser to hit the route
+- Returns the parsed params to the calling provider
+
+This is what makes local OAuth work without a public redirect URI for Apple Music —
+the callback goes directly to the local server because the MusicKit popup runs in
+the user's browser on the same LAN.
+
+### Sonos playback (source: `providers/sonos/`)
+
+Uses `aiosonos` (WebSocket-based, not UPnP/soco):
+- Discovers speakers via mDNS
+- Playback via `client.player.group.play_cloud_queue()` or `play_stream_url()`
+- MA acts as a cloud queue server; Sonos pulls the stream from MA's local HTTP server
+
+### Provider plugin architecture
+
+Each music service is a provider module implementing:
+- `get_config_entries()` — declares config fields (credentials, options)
+- `setup()` — initializes the provider instance
+- `MusicProvider` base class — search, browse, library sync
+- `SUPPORTED_FEATURES` set — declares what the provider can do
+
+---
+
 ## Community Tools
 
 | Tool | Description | Status |
