@@ -265,49 +265,11 @@ completed as of this writing.
 
 ---
 
-## Alternative: Apple MusicKit API (Hybrid Approach)
+## Ruled Out: Apple MusicKit API
 
-Apple's MusicKit API can search personal library directly, without Sonos involvement.
-
-### Key endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /v1/me/library/search` | Search personal library |
-| `GET /v1/me/library/albums` | All library albums |
-| `GET /v1/me/library/playlists` | All playlists |
-| `GET /v1/me/library/songs` | All songs |
-
-Search types: `library-albums`, `library-songs`, `library-artists`, `library-playlists`
-
-### Authentication requirements
-
-- **Developer Token**: JWT (ES256) signed with a MusicKit private key from Apple
-  Developer portal. ~6-month lifetime. Requires $99/year Apple Developer membership.
-- **Music User Token**: Per-user OAuth token obtained via MusicKit authorization
-  flow. Added as `music-user-token` header. ~6-month lifetime, must reauthenticate
-  on expiry.
-
-### Hybrid architecture
-
-Use MusicKit for **search** (catalog + personal library), then construct Sonos
-track URIs using the same format already implemented:
-
-```
-x-sonos-http:song%3a{track_id}.mp4?sid=204&flags=8232&sn={sn}
-```
-
-The track IDs returned by MusicKit match iTunes catalog IDs exactly (for catalog
-content). For personal library items the IDs are library-specific and may not
-be playable via the existing URI format — further investigation needed.
-
-### Feasibility for this project
-
-- Requires user to authorize with Apple once (web OAuth flow from the Pi web UI)
-- Music User Token must be stored securely and refreshed every ~6 months
-- Gives access to full personal library and playlists — not possible via iTunes
-  Search API
-- No Sonos registration or SMAPI required
+- Requires $99/year Apple Developer Program membership — not viable
+- Only covers Apple Music; does not solve search for Amazon Music, Spotify, or other services
+- Not a path forward for this project
 
 ---
 
