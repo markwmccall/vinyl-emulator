@@ -667,6 +667,8 @@ def settings_update():
     nfc_mode = config.get("nfc_mode", "mock")
     update_info = _check_for_update() if nfc_mode == "pn532" else None
     state, log_lines = _read_update_state()
+    if state == "success":
+        UPDATE_LOG.unlink(missing_ok=True)
     return render_template(
         "settings_update.html",
         csrf_token=session["csrf_token"],

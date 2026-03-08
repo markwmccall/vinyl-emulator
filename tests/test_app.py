@@ -1695,6 +1695,14 @@ class TestSettingsUpdatePage:
         # updating=1 triggers live log polling section
         assert b"update-log" in resp.data or b"pollUpdate" in resp.data
 
+    def test_success_state_deletes_log(self, client, tmp_path, monkeypatch):
+        import app
+        log = tmp_path / "update.log"
+        log.write_text("STATE: running\nSTATE: success\n")
+        monkeypatch.setattr(app, "UPDATE_LOG", log)
+        client.get("/settings/update")
+        assert not log.exists()
+
 
 class TestUpdateCheck:
     @pytest.fixture(autouse=True)
