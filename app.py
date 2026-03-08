@@ -17,9 +17,10 @@ from packaging.version import Version
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
 
-import apple_music
+import soco
 from nfc_interface import MockNFC, PN532NFC, parse_tag_data
-from sonos_controller import detect_apple_music_sn, get_now_playing, get_speakers, get_volume, next_track, pause, play_album, prev_track, resume, set_volume, stop
+from providers import get_provider
+from sonos_controller import get_now_playing, get_speakers, get_volume, next_track, pause, play_album, prev_track, resume, set_volume, stop
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
@@ -62,6 +63,12 @@ _NFC_BACKOFF_SECS = 30
 def _load_config():
     with open(CONFIG_PATH) as f:
         config = json.load(f)
+    # In-memory migration: flat "sn" → services.apple.sn (and vice versa)
+    if "sn" in config and "services" not in config:
+        config.setdefault("services", {}).setdefault("apple", {})
+        config["services"]["apple"]["sn"] = config["sn"]
+    elif "services" in config and "apple" in config["services"]:
+        config.setdefault("sn", config["services"]["apple"].get("sn"))
     required = ["speaker_ip", "sn", "nfc_mode"]
     missing = [k for k in required if k not in config]
     if missing:
@@ -320,10 +327,11 @@ def _nfc_loop(config_path):
         _nfc_last_tag = tag_data
         try:
             tag = parse_tag_data(tag_data)
-            tracks = (apple_music.get_track(tag["id"]) if tag["type"] == "track"
-                      else apple_music.get_album_tracks(tag["id"]))
+            provider = get_provider(tag["service"])
+            tracks = (provider.get_track(tag["id"]) if tag["type"] == "track"
+                      else provider.get_album_tracks(tag["id"]))
             config = _load_config()
-            play_album(config["speaker_ip"], tracks, config["sn"],
+            play_album(config["speaker_ip"], tracks, provider, config["sn"],
                        speaker_name=config.get("speaker_name"), config_path=config_path)
             log.info(f"Playing {tag['type']} {tag['id']}")
         except Exception as e:
@@ -359,12 +367,13 @@ def _format_existing_tag(tag_string):
     except ValueError:
         return tag_string
     try:
+        provider = get_provider(tag["service"])
         if tag["type"] == "track":
-            tracks = apple_music.get_track(tag["id"])
+            tracks = provider.get_track(tag["id"])
             if tracks:
                 return f"{tracks[0]['name']} by {tracks[0]['artist']}"
         else:
-            tracks = apple_music.get_album_tracks(tag["id"])
+            tracks = provider.get_album_tracks(tag["id"])
             if tracks:
                 return f"{tracks[0]['album']} by {tracks[0]['artist']}"
     except Exception:
@@ -373,15 +382,16 @@ def _format_existing_tag(tag_string):
 
 
 def _do_record_tag(tag_data, data):
+    provider = get_provider("apple")
     if "track_id" in data:
-        tracks = apple_music.get_track(data["track_id"])
+        tracks = provider.get_track(data["track_id"])
         if tracks:
             t = tracks[0]
             _record_tag(tag_data, "track", t["name"], t["artist"],
                         t.get("artwork_url", ""), album_id=t.get("album_id"),
                         track_id=t["track_id"])
     else:
-        tracks = apple_music.get_album_tracks(data["album_id"])
+        tracks = provider.get_album_tracks(data["album_id"])
         if tracks:
             t = tracks[0]
             _record_tag(tag_data, "album", t["album"], t["artist"],
@@ -399,14 +409,15 @@ def search():
     search_type = request.args.get("type", "album")
     if not q:
         return jsonify([])
+    provider = get_provider("apple")
     if search_type == "song":
-        return jsonify(apple_music.search_songs(q))
-    return jsonify(apple_music.search_albums(q))
+        return jsonify(provider.search_songs(q))
+    return jsonify(provider.search_albums(q))
 
 
 @app.route("/album/<int:album_id>")
 def album(album_id):
-    tracks = apple_music.get_album_tracks(album_id)
+    tracks = get_provider("apple").get_album_tracks(album_id)
     if not tracks:
         abort(404)
     return render_template("album.html", album_id=album_id, tracks=tracks, show_now_playing=True)
@@ -414,7 +425,7 @@ def album(album_id):
 
 @app.route("/track/<int:track_id>")
 def track(track_id):
-    tracks = apple_music.get_track(track_id)
+    tracks = get_provider("apple").get_track(track_id)
     if not tracks:
         abort(404)
     return render_template("track.html", track_id=track_id, track=tracks[0], show_now_playing=True)
@@ -429,8 +440,9 @@ def print_inserts():
     if not album_ids:
         abort(400)
     albums = []
+    provider = get_provider("apple")
     for album_id in album_ids:
-        tracks = apple_music.get_album_tracks(album_id)
+        tracks = provider.get_album_tracks(album_id)
         if tracks:
             albums.append({
                 "album_id": album_id,
@@ -540,13 +552,14 @@ def play():
     if not data or ("track_id" not in data and "album_id" not in data):
         return jsonify({"error": "album_id or track_id required"}), 400
     config = _load_config()
+    provider = get_provider("apple")
     if "track_id" in data:
-        tracks = apple_music.get_track(data["track_id"])
+        tracks = provider.get_track(data["track_id"])
     else:
-        tracks = apple_music.get_album_tracks(data["album_id"])
+        tracks = provider.get_album_tracks(data["album_id"])
     if not tracks:
         return jsonify({"error": "not found"}), 404
-    play_album(config["speaker_ip"], tracks, config["sn"],
+    play_album(config["speaker_ip"], tracks, provider, config["sn"],
                speaker_name=config.get("speaker_name"), config_path=CONFIG_PATH)
     return jsonify({"status": "ok"})
 
@@ -821,10 +834,15 @@ def read_tag():
                         "album": None, "error": str(e)})
     tag_type = tag["type"]
     content_id = tag["id"]
+    try:
+        provider = get_provider(tag["service"])
+    except KeyError:
+        return jsonify({"tag_string": tag_string, "tag_type": tag_type, "content_id": content_id,
+                        "album": None, "error": f"Unknown service: {tag['service']!r}"})
     if tag_type == "track":
-        tracks = apple_music.get_track(content_id)
+        tracks = provider.get_track(content_id)
     else:
-        tracks = apple_music.get_album_tracks(content_id)
+        tracks = provider.get_album_tracks(content_id)
     album = None
     if tracks:
         t = tracks[0]
@@ -839,7 +857,7 @@ def detect_sn():
     speaker_ip = request.args.get("speaker_ip") or _load_config().get("speaker_ip", "")
     if not speaker_ip:
         return jsonify({"error": "no speaker configured"}), 400
-    sn = detect_apple_music_sn(speaker_ip)
+    sn = get_provider("apple").detect_sn(soco.SoCo(speaker_ip))
     if sn is None:
         return jsonify({"error": "No Apple Music favorites found in Sonos - enter 3 or 5 manually"}), 404
     return jsonify({"sn": sn})
@@ -866,7 +884,7 @@ def now_playing():
     }
     if info["track_id"]:
         try:
-            tracks = apple_music.get_track(info["track_id"])
+            tracks = get_provider("apple").get_track(info["track_id"])
             if tracks:
                 result["album_id"] = tracks[0].get("album_id")
                 result["artwork_url"] = tracks[0].get("artwork_url")
@@ -918,13 +936,17 @@ def play_tag():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     config = _load_config()
+    try:
+        provider = get_provider(tag["service"])
+    except KeyError as e:
+        return jsonify({"error": str(e)}), 400
     if tag["type"] == "track":
-        tracks = apple_music.get_track(tag["id"])
+        tracks = provider.get_track(tag["id"])
     else:
-        tracks = apple_music.get_album_tracks(tag["id"])
+        tracks = provider.get_album_tracks(tag["id"])
     if not tracks:
         return jsonify({"error": "not found"}), 404
-    play_album(config["speaker_ip"], tracks, config["sn"],
+    play_album(config["speaker_ip"], tracks, provider, config["sn"],
                speaker_name=config.get("speaker_name"), config_path=CONFIG_PATH)
     return jsonify({"status": "ok"})
 

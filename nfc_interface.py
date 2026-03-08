@@ -48,25 +48,26 @@ def _build_ndef_uri_tlv(url):
 
 
 def parse_tag_data(tag_string):
-    """Parse an NDEF tag string into a dict with 'type' and 'id'.
+    """Parse an NDEF tag string into a dict with 'service', 'type', and 'id'.
 
     Supported formats:
-      apple:{collection_id}       -> {"type": "album", "id": "..."}
-      apple:track:{track_id}      -> {"type": "track", "id": "..."}
+      {service}:{collection_id}       -> {"service": "...", "type": "album", "id": "..."}
+      {service}:track:{track_id}      -> {"service": "...", "type": "track", "id": "..."}
 
-    Raises ValueError if the format is not recognised.
+    Raises ValueError only for structurally invalid strings (no colon, empty parts).
+    Unknown services parse successfully; provider lookup raises KeyError later.
     """
-    if not tag_string.startswith("apple:"):
+    if not tag_string or ":" not in tag_string:
         raise ValueError(f"Unrecognised tag format: {tag_string!r}")
-    rest = tag_string[len("apple:"):]
-    if not rest:
+    service, _, rest = tag_string.partition(":")
+    if not service or not rest:
         raise ValueError(f"Unrecognised tag format: {tag_string!r}")
     if rest.startswith("track:"):
         track_id = rest[len("track:"):]
         if not track_id:
             raise ValueError(f"Unrecognised tag format: {tag_string!r}")
-        return {"type": "track", "id": track_id}
-    return {"type": "album", "id": rest}
+        return {"service": service, "type": "track", "id": track_id}
+    return {"service": service, "type": "album", "id": rest}
 
 
 class MockNFC:

@@ -5,21 +5,21 @@ from unittest.mock import MagicMock, patch
 class TestParseTagData:
     def test_valid_album_tag(self):
         from nfc_interface import parse_tag_data
-        assert parse_tag_data("apple:1440903625") == {"type": "album", "id": "1440903625"}
+        assert parse_tag_data("apple:1440903625") == {"service": "apple", "type": "album", "id": "1440903625"}
 
     def test_valid_track_tag(self):
         from nfc_interface import parse_tag_data
-        assert parse_tag_data("apple:track:1440904001") == {"type": "track", "id": "1440904001"}
+        assert parse_tag_data("apple:track:1440904001") == {"service": "apple", "type": "track", "id": "1440904001"}
 
     def test_invalid_format_raises(self):
         from nfc_interface import parse_tag_data
         with pytest.raises(ValueError):
             parse_tag_data("notvalid")
 
-    def test_wrong_prefix_raises(self):
+    def test_unknown_service_parses_without_error(self):
         from nfc_interface import parse_tag_data
-        with pytest.raises(ValueError):
-            parse_tag_data("spotify:1440903625")
+        result = parse_tag_data("spotify:1440903625")
+        assert result == {"service": "spotify", "type": "album", "id": "1440903625"}
 
     def test_empty_string_raises(self):
         from nfc_interface import parse_tag_data

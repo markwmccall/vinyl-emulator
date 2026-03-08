@@ -1,6 +1,7 @@
 import json
 import pytest
 from unittest.mock import ANY, patch, MagicMock
+import providers
 
 
 SAMPLE_ALBUMS = [
@@ -44,7 +45,7 @@ class TestIndex:
 
 class TestSearch:
     def test_returns_json_albums(self, client):
-        with patch("app.apple_music.search_albums", return_value=SAMPLE_ALBUMS):
+        with patch.object(providers.get_provider("apple"), "search_albums", return_value=SAMPLE_ALBUMS):
             resp = client.get("/search?q=Test Album")
         assert resp.status_code == 200
         data = resp.get_json()
@@ -53,7 +54,7 @@ class TestSearch:
         assert data[0]["artist"] == "Test Artist"
 
     def test_song_search_returns_songs(self, client):
-        with patch("app.apple_music.search_songs", return_value=SAMPLE_SONGS):
+        with patch.object(providers.get_provider("apple"), "search_songs", return_value=SAMPLE_SONGS):
             resp = client.get("/search?q=Track+One&type=song")
         assert resp.status_code == 200
         data = resp.get_json()
@@ -74,58 +75,58 @@ class TestSearch:
 
 class TestAlbum:
     def test_returns_200(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/album/1440903625")
         assert resp.status_code == 200
 
     def test_renders_track_names(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/album/1440903625")
         assert b"Track One" in resp.data
         assert b"Track Two" in resp.data
 
     def test_track_names_are_linked(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/album/1440903625")
         assert b"/track/1440904001" in resp.data
         assert b"/track/1440904002" in resp.data
 
     def test_renders_album_and_artist(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/album/1440903625")
         assert b"Test Album" in resp.data
         assert b"Test Artist" in resp.data
 
     def test_unknown_album_returns_404(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=[]):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=[]):
             resp = client.get("/album/9999999")
         assert resp.status_code == 404
 
 
 class TestTrack:
     def test_returns_200(self, client):
-        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+        with patch.object(providers.get_provider("apple"), "get_track", return_value=SAMPLE_SINGLE_TRACK):
             resp = client.get("/track/1440904001")
         assert resp.status_code == 200
 
     def test_renders_track_name(self, client):
-        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+        with patch.object(providers.get_provider("apple"), "get_track", return_value=SAMPLE_SINGLE_TRACK):
             resp = client.get("/track/1440904001")
         assert b"Track One" in resp.data
 
     def test_renders_artist_and_album(self, client):
-        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+        with patch.object(providers.get_provider("apple"), "get_track", return_value=SAMPLE_SINGLE_TRACK):
             resp = client.get("/track/1440904001")
         assert b"Test Artist" in resp.data
         assert b"Test Album" in resp.data
 
     def test_shows_tag_string(self, client):
-        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+        with patch.object(providers.get_provider("apple"), "get_track", return_value=SAMPLE_SINGLE_TRACK):
             resp = client.get("/track/1440904001")
         assert b"apple:track:1440904001" in resp.data
 
     def test_unknown_track_returns_404(self, client):
-        with patch("app.apple_music.get_track", return_value=[]):
+        with patch.object(providers.get_provider("apple"), "get_track", return_value=[]):
             resp = client.get("/track/9999999")
         assert resp.status_code == 404
 
@@ -353,35 +354,35 @@ class TestWriteUrlTag:
 
 class TestAlbumPage:
     def test_shows_album_id(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/album/1440903625")
         assert b"1440903625" in resp.data
 
     def test_shows_tag_string(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/album/1440903625")
         assert b"apple:1440903625" in resp.data
 
 
 class TestPlay:
     def test_plays_album(self, client, temp_config):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("app.play_album") as mock_play:
             resp = client.post("/play", json={"album_id": "1440903625"})
         assert resp.status_code == 200
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3",
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, ANY, "3",
                                           speaker_name="Family Room", config_path=ANY)
 
     def test_plays_track(self, client, temp_config):
-        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK), \
+        with patch.object(providers.get_provider("apple"), "get_track", return_value=SAMPLE_SINGLE_TRACK), \
              patch("app.play_album") as mock_play:
             resp = client.post("/play", json={"track_id": "1440904001"})
         assert resp.status_code == 200
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_SINGLE_TRACK, "3",
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_SINGLE_TRACK, ANY, "3",
                                           speaker_name="Family Room", config_path=ANY)
 
     def test_returns_ok(self, client, temp_config):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("app.play_album"):
             resp = client.post("/play", json={"album_id": "1440903625"})
         assert resp.get_json()["status"] == "ok"
@@ -395,14 +396,14 @@ class TestPlay:
         assert resp.status_code == 400
 
     def test_unknown_album_returns_404(self, client, temp_config):
-        with patch("app.apple_music.get_album_tracks", return_value=[]), \
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=[]), \
              patch("app.play_album") as mock_play:
             resp = client.post("/play", json={"album_id": "9999999"})
         assert resp.status_code == 404
         mock_play.assert_not_called()
 
     def test_unknown_track_returns_404(self, client, temp_config):
-        with patch("app.apple_music.get_track", return_value=[]), \
+        with patch.object(providers.get_provider("apple"), "get_track", return_value=[]), \
              patch("app.play_album") as mock_play:
             resp = client.post("/play", json={"track_id": "9999999"})
         assert resp.status_code == 404
@@ -838,7 +839,7 @@ class TestReadTag:
         mock_nfc = MagicMock()
         mock_nfc.read_tag.return_value = "apple:1440903625"
         with patch("app.MockNFC", return_value=mock_nfc), \
-             patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+             patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/read-tag")
         assert resp.status_code == 200
         data = resp.get_json()
@@ -850,7 +851,7 @@ class TestReadTag:
         mock_nfc = MagicMock()
         mock_nfc.read_tag.return_value = "apple:track:1440904001"
         with patch("app.MockNFC", return_value=mock_nfc), \
-             patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+             patch.object(providers.get_provider("apple"), "get_track", return_value=SAMPLE_SINGLE_TRACK):
             resp = client.get("/read-tag")
         data = resp.get_json()
         assert data["tag_string"] == "apple:track:1440904001"
@@ -861,7 +862,7 @@ class TestReadTag:
         mock_nfc = MagicMock()
         mock_nfc.read_tag.return_value = "apple:1440903625"
         with patch("app.MockNFC", return_value=mock_nfc), \
-             patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+             patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/read-tag")
         data = resp.get_json()
         assert data["album"]["name"] == "Test Album"
@@ -888,7 +889,7 @@ class TestReadTag:
         assert data["error"] is None
 
     def test_tag_query_param_skips_nfc(self, client, temp_config):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/read-tag?tag=apple:1440903625")
         data = resp.get_json()
         assert data["tag_string"] == "apple:1440903625"
@@ -903,7 +904,7 @@ class TestReadTag:
         fresh_queue = q.Queue(maxsize=1)
         fresh_queue.put("apple:1440903625")
         monkeypatch.setattr(app, "_nfc_read_queue", fresh_queue)
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/read-tag")
         assert resp.status_code == 200
         assert resp.get_json()["tag_string"] == "apple:1440903625"
@@ -925,7 +926,7 @@ class TestReadTag:
         fresh_queue.put("apple:1440903625")
         fresh_queue.put("apple:9999999999")  # stale item
         monkeypatch.setattr(app, "_nfc_read_queue", fresh_queue)
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/read-tag")
         assert resp.status_code == 200
         assert resp.get_json()["tag_string"] == "apple:1440903625"
@@ -960,18 +961,18 @@ class TestVerify:
 
 class TestDetectSn:
     def test_returns_detected_sn(self, client, temp_config):
-        with patch("app.detect_apple_music_sn", return_value="3"):
+        with patch.object(providers.get_provider("apple"), "detect_sn", return_value="3"):
             resp = client.get("/detect-sn")
         assert resp.status_code == 200
         assert resp.get_json()["sn"] == "3"
 
     def test_returns_404_when_not_found(self, client, temp_config):
-        with patch("app.detect_apple_music_sn", return_value=None):
+        with patch.object(providers.get_provider("apple"), "detect_sn", return_value=None):
             resp = client.get("/detect-sn")
         assert resp.status_code == 404
 
     def test_accepts_speaker_ip_param(self, client):
-        with patch("app.detect_apple_music_sn", return_value="5"):
+        with patch.object(providers.get_provider("apple"), "detect_sn", return_value="5"):
             resp = client.get("/detect-sn?speaker_ip=10.0.0.12")
         assert resp.status_code == 200
         assert resp.get_json()["sn"] == "5"
@@ -1007,7 +1008,7 @@ class TestNowPlaying:
         with patch("app.get_now_playing", return_value={
             "title": "Track One", "artist": "Test Artist", "album": "Test Album",
             "track_id": 1440904001, "paused": False,
-        }), patch("app.apple_music.get_track", return_value=[{
+        }), patch.object(providers.get_provider("apple"), "get_track", return_value=[{
             "track_id": 1440904001, "name": "Track One", "track_number": 1,
             "artist": "Test Artist", "album": "Test Album",
             "album_id": 1440903625,
@@ -1037,7 +1038,7 @@ class TestNowPlaying:
         with patch("app.get_now_playing", return_value={
             "title": "Track One", "artist": "Test Artist", "album": "Test Album",
             "track_id": 1440904001, "paused": False,
-        }), patch("app.apple_music.get_track", side_effect=Exception("network error")):
+        }), patch.object(providers.get_provider("apple"), "get_track", side_effect=Exception("network error")):
             resp = client.get("/now-playing")
         data = resp.get_json()
         assert data["playing"] is True
@@ -1134,19 +1135,19 @@ class TestTransport:
 
 class TestPlayTag:
     def test_plays_album_tag(self, client, temp_config):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("app.play_album") as mock_play:
             resp = client.post("/play/tag", json={"tag": "apple:1440903625"})
         assert resp.status_code == 200
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, "3",
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_TRACKS, ANY, "3",
                                           speaker_name="Family Room", config_path=ANY)
 
     def test_plays_track_tag(self, client, temp_config):
-        with patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK), \
+        with patch.object(providers.get_provider("apple"), "get_track", return_value=SAMPLE_SINGLE_TRACK), \
              patch("app.play_album") as mock_play:
             resp = client.post("/play/tag", json={"tag": "apple:track:1440904001"})
         assert resp.status_code == 200
-        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_SINGLE_TRACK, "3",
+        mock_play.assert_called_once_with("10.0.0.12", SAMPLE_SINGLE_TRACK, ANY, "3",
                                           speaker_name="Family Room", config_path=ANY)
 
     def test_invalid_tag_returns_400(self, client, temp_config):
@@ -1158,14 +1159,14 @@ class TestPlayTag:
         assert resp.status_code == 400
 
     def test_unknown_album_tag_returns_404(self, client, temp_config):
-        with patch("app.apple_music.get_album_tracks", return_value=[]), \
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=[]), \
              patch("app.play_album") as mock_play:
             resp = client.post("/play/tag", json={"tag": "apple:9999999"})
         assert resp.status_code == 404
         mock_play.assert_not_called()
 
     def test_unknown_track_tag_returns_404(self, client, temp_config):
-        with patch("app.apple_music.get_track", return_value=[]), \
+        with patch.object(providers.get_provider("apple"), "get_track", return_value=[]), \
              patch("app.play_album") as mock_play:
             resp = client.post("/play/tag", json={"tag": "apple:track:9999999"})
         assert resp.status_code == 404
@@ -1222,7 +1223,7 @@ class TestCollection:
         monkeypatch.setattr(app, "TAGS_PATH", str(tmp_path / "tags.json"))
         mock_nfc = MagicMock()
         with patch("app.MockNFC", return_value=mock_nfc), \
-             patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+             patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             client.post("/write-tag", json={"album_id": "1440903625"})
         tags = json.loads((tmp_path / "tags.json").read_text())
         assert len(tags) == 1
@@ -1234,7 +1235,7 @@ class TestCollection:
         monkeypatch.setattr(app, "TAGS_PATH", str(tmp_path / "tags.json"))
         mock_nfc = MagicMock()
         with patch("app.MockNFC", return_value=mock_nfc), \
-             patch("app.apple_music.get_track", return_value=SAMPLE_SINGLE_TRACK):
+             patch.object(providers.get_provider("apple"), "get_track", return_value=SAMPLE_SINGLE_TRACK):
             client.post("/write-tag", json={"track_id": "1440904001"})
         tags = json.loads((tmp_path / "tags.json").read_text())
         assert len(tags) == 1
@@ -1251,27 +1252,27 @@ class TestFormatExistingTag:
 
     def test_track_tag_returns_name_and_artist(self):
         from app import _format_existing_tag
-        with patch("app.apple_music.get_track", return_value=self.SAMPLE_TRACK):
+        with patch.object(providers.get_provider("apple"), "get_track", return_value=self.SAMPLE_TRACK):
             assert _format_existing_tag("apple:track:1440904001") == "Track One by Test Artist"
 
     def test_album_tag_returns_album_and_artist(self):
         from app import _format_existing_tag
-        with patch("app.apple_music.get_album_tracks", return_value=self.SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=self.SAMPLE_TRACKS):
             assert _format_existing_tag("apple:1440903625") == "Test Album by Test Artist"
 
     def test_empty_track_results_returns_raw_string(self):
         from app import _format_existing_tag
-        with patch("app.apple_music.get_track", return_value=[]):
+        with patch.object(providers.get_provider("apple"), "get_track", return_value=[]):
             assert _format_existing_tag("apple:track:1440904001") == "apple:track:1440904001"
 
     def test_empty_album_results_returns_raw_string(self):
         from app import _format_existing_tag
-        with patch("app.apple_music.get_album_tracks", return_value=[]):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=[]):
             assert _format_existing_tag("apple:1440903625") == "apple:1440903625"
 
     def test_exception_in_lookup_returns_raw_string(self):
         from app import _format_existing_tag
-        with patch("app.apple_music.get_track", side_effect=Exception("network error")):
+        with patch.object(providers.get_provider("apple"), "get_track", side_effect=Exception("network error")):
             assert _format_existing_tag("apple:track:1440904001") == "apple:track:1440904001"
 
 
@@ -1315,7 +1316,7 @@ class TestNfcRoutes503:
         mock_nfc = MagicMock()
         mock_nfc.read_tag.return_value = None
         monkeypatch.setattr(app, "_nfc", mock_nfc)
-        with patch("app.apple_music.get_album_tracks", side_effect=Exception("API error")):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", side_effect=Exception("API error")):
             resp = client.post("/write-tag", json={"album_id": "1440903625"})
         assert resp.status_code == 200
         assert resp.get_json()["status"] == "ok"
@@ -1394,22 +1395,22 @@ class TestLoadTags:
 
 class TestPrintInserts:
     def test_single_album_returns_200(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/print?ids=1440903625")
         assert resp.status_code == 200
 
     def test_renders_album_name(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/print?ids=1440903625")
         assert b"Test Album" in resp.data
 
     def test_renders_artist(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/print?ids=1440903625")
         assert b"Test Artist" in resp.data
 
     def test_renders_track_names(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS):
             resp = client.get("/print?ids=1440903625")
         assert b"Track One" in resp.data
         assert b"Track Two" in resp.data
@@ -1421,7 +1422,7 @@ class TestPrintInserts:
         tracks_b = [{"track_id": 2, "name": "Song B", "track_number": 1,
                      "artist": "Artist B", "album": "Album B",
                      "artwork_url": "https://example.com/b.jpg"}]
-        with patch("app.apple_music.get_album_tracks", side_effect=[tracks_a, tracks_b]):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", side_effect=[tracks_a, tracks_b]):
             resp = client.get("/print?ids=111,222")
         assert resp.status_code == 200
         assert b"Album A" in resp.data
@@ -1440,7 +1441,7 @@ class TestPrintInserts:
         assert resp.status_code == 400
 
     def test_all_ids_not_found_returns_404(self, client):
-        with patch("app.apple_music.get_album_tracks", return_value=[]):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=[]):
             resp = client.get("/print?ids=9999999")
         assert resp.status_code == 404
 
@@ -1448,7 +1449,7 @@ class TestPrintInserts:
         tracks_a = [{"track_id": 1, "name": "Song A", "track_number": 1,
                      "artist": "Artist A", "album": "Album A",
                      "artwork_url": "https://example.com/a.jpg"}]
-        with patch("app.apple_music.get_album_tracks", side_effect=[tracks_a, []]):
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", side_effect=[tracks_a, []]):
             resp = client.get("/print?ids=111,999")
         assert resp.status_code == 200
         assert b"Album A" in resp.data
@@ -1474,7 +1475,7 @@ class TestNfcLoop:
         mock_nfc = MagicMock()
         mock_nfc.read_tag.side_effect = ["apple:1440903625", KeyboardInterrupt]
         monkeypatch.setattr(app, "_nfc", mock_nfc)
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("app.play_album") as mock_play:
             with pytest.raises(KeyboardInterrupt):
                 app._nfc_loop(pn532_config)
@@ -1488,7 +1489,7 @@ class TestNfcLoop:
             KeyboardInterrupt,
         ]
         monkeypatch.setattr(app, "_nfc", mock_nfc)
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("app.play_album") as mock_play:
             with pytest.raises(KeyboardInterrupt):
                 app._nfc_loop(pn532_config)
@@ -1504,7 +1505,7 @@ class TestNfcLoop:
             KeyboardInterrupt,
         ]
         monkeypatch.setattr(app, "_nfc", mock_nfc)
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("app.play_album") as mock_play:
             with pytest.raises(KeyboardInterrupt):
                 app._nfc_loop(pn532_config)
@@ -1518,7 +1519,7 @@ class TestNfcLoop:
         monkeypatch.setattr(app, "_nfc", mock_nfc)
         # Simulate /read-tag having already read this card
         monkeypatch.setattr(app, "_nfc_last_tag", "apple:1440903625")
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("app.play_album") as mock_play:
             with pytest.raises(KeyboardInterrupt):
                 app._nfc_loop(pn532_config)
@@ -1614,7 +1615,7 @@ class TestNfcLoop:
         )
         monkeypatch.setattr(app, "_nfc", mock_nfc)
         with patch("app.time.sleep") as mock_sleep, \
-             patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+             patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("app.play_album"), \
              pytest.raises(KeyboardInterrupt):
             app._nfc_loop(pn532_config)
@@ -1650,7 +1651,7 @@ class TestNfcLoop:
             + ["apple:1440903625", KeyboardInterrupt]
         )
         monkeypatch.setattr(app, "_nfc", mock_nfc)
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("app.play_album"), \
              pytest.raises(KeyboardInterrupt):
             with patch.object(app.log, "info") as mock_info:
@@ -1663,7 +1664,7 @@ class TestNfcLoop:
         mock_nfc = MagicMock()
         mock_nfc.read_tag.side_effect = ["apple:1440903625", KeyboardInterrupt]
         monkeypatch.setattr(app, "_nfc", mock_nfc)
-        with patch("app.apple_music.get_album_tracks", return_value=SAMPLE_TRACKS), \
+        with patch.object(providers.get_provider("apple"), "get_album_tracks", return_value=SAMPLE_TRACKS), \
              patch("app.play_album", side_effect=Exception("Sonos error")):
             with pytest.raises(KeyboardInterrupt):
                 app._nfc_loop(pn532_config)
