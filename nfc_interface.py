@@ -90,13 +90,15 @@ class MockNFC:
 class PN532NFC:
     """Raspberry Pi NFC implementation using the Waveshare PN532 HAT via I2C.
 
-    Expects the HAT jumpers configured for I2C mode (I0=H, I1=L) with:
-      - INT0  connected to GPIO16 (D16) — IRQ pin, avoids I2C clock stretching
-      - RSTPDN connected to GPIO20 (D20) — allows software reset after failures
+    Expects the HAT jumpers configured for I2C mode (I0=H, I1=L) with
+    RSTPDN optionally connected to GPIO20 (D20) to allow software reset after
+    repeated I2C failures.
 
-    With the IRQ pin wired, the Adafruit library signals readiness via GPIO
-    interrupt instead of clock-stretching the I2C bus, preventing the BCM2835
-    hang that requires a power cycle to recover.
+    INT0→D16 (irq pin) is intentionally NOT used here. When irq= is set,
+    the Adafruit library only reads from the PN532 when GPIO16 is LOW. If
+    INT0 is not physically wired to D16, the pin floats HIGH and no cards
+    are ever detected. The BCM2835 I2C timeout (set in setup.sh) provides
+    protection against bus hangs instead.
     """
 
     def __init__(self):
@@ -104,7 +106,7 @@ class PN532NFC:
         import busio
         from adafruit_pn532.i2c import PN532_I2C
         i2c = busio.I2C(board.SCL, board.SDA)
-        self._pn532 = PN532_I2C(i2c, debug=False, irq=board.D16, reset=board.D20)
+        self._pn532 = PN532_I2C(i2c, debug=False, reset=board.D20)
         self._pn532.SAM_configuration()
 
     def reset(self):

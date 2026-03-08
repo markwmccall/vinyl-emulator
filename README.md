@@ -52,10 +52,9 @@ Download [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Select **
 Attach the PN532 NFC HAT to the Pi's 40-pin GPIO header. Before powering on, configure the HAT jumpers as described in the [Waveshare PN532 HAT wiki](https://www.waveshare.com/wiki/PN532_NFC_HAT):
 
 1. **Set I2C mode** — set I0 to H and I1 to L using the mode jumper caps.
-2. **Connect RSTPDN to D20** — enables software reset of the PN532 after failures.
-3. **Connect INT0 to D16** — connects the interrupt pin; avoids I2C clock stretching and prevents the bus hang that otherwise requires a power cycle to recover.
+2. **Connect RSTPDN to D20** — optional but recommended; enables software reset of the PN532 after repeated I2C failures without requiring a power cycle.
 
-> Steps 2 and 3 are optional per the Waveshare docs but **strongly recommended** — they allow the software to recover from NFC read failures automatically without a power cycle.
+> **Do not connect INT0 to D16.** The Waveshare docs suggest this to avoid clock stretching, but when the IRQ pin is set in software, the Adafruit library will only detect cards when GPIO16 goes LOW. If INT0 is not physically wired to D16 the pin floats HIGH and no taps are ever detected. Leave INT0 unconnected; the BCM2835 I2C timeout (configured by setup.sh) handles bus hang prevention instead.
 
 Insert the SD card and power on. Wait about 60 seconds, then SSH in:
 
@@ -108,9 +107,13 @@ Open `http://your-hostname.local` in your browser, go to **Settings → Update**
 
 **NFC reader stops working / requires power cycle to recover**
 - This is almost always an I2C bus hang caused by the PN532 clock-stretching the SCL line
-- **Fix:** Connect the INT0 jumper to D16 (GPIO16) on the HAT — this switches the reader from clock-stretch polling to interrupt-driven mode and prevents the hang. See step 2 in [Assemble the hardware](#2-assemble-the-hardware) above.
-- After updating the firmware, also connect RSTPDN to D20 (GPIO20) so the software can reset the reader automatically without a power cycle
-- If the jumpers are already set and the bus is currently hung: power cycle the Pi, then check the jumpers
+- The BCM2835 I2C timeout (written by setup.sh to `/etc/modprobe.d/i2c-bcm2835.conf`) prevents indefinite hangs — apply it and reboot if you haven't already
+- Connect RSTPDN to D20 so the software can attempt a hardware reset automatically after repeated failures
+- If the bus is currently hung: power cycle the Pi (unplug power; reboot alone is not enough)
+
+**Taps not detected at all after a software update**
+- If INT0 is connected to D16 (GPIO16) on the HAT, disconnect it — leave INT0 unconnected
+- When the IRQ pin is set in software, the library only reads the PN532 when GPIO16 goes LOW; if INT0 is not physically wired to D16 the pin floats HIGH and no cards are ever detected
 
 **Music doesn't play after tapping a card**
 - Check `sudo systemctl status vinyl-web` for errors
