@@ -263,6 +263,29 @@ Developers have reported registrations remaining "under analysis" indefinitely.
 There is no explicit hobby/individual tier. Registration was started but not
 completed as of this writing.
 
+### Once registered: next steps
+
+1. **Prove out search** — the critical unknown is whether the Control API actually
+   proxies music service search by name, or only plays content by a pre-known
+   `musicObjectId`. The `playback:loadContent` endpoint accepts a `musicObjectId`
+   but it's unclear if that requires a prior search call or a known catalog ID.
+
+2. **If search is exposed:**
+   - Implement OAuth flow in the web UI (Settings page, one-time Sonos account auth)
+   - Store and refresh the Sonos access token in `config.json`
+   - Replace/augment `apple_music.py` search with Control API calls
+   - `playback:loadContent` replaces the manual DIDL/URI construction in
+     `sonos_controller.py`
+
+3. **If search is NOT exposed:**
+   - The Control API may only handle playback control, not content discovery
+   - Search would still require SMAPI, which requires a public HTTPS endpoint (S2)
+   - Options: Cloudflare Tunnel or ngrok to expose the Pi's SMAPI endpoint
+
+4. **Token management:**
+   - Access tokens are short-lived; refresh tokens must be stored securely
+   - Add token refresh logic to `app.py` (background thread or on-demand)
+
 ---
 
 ## Ruled Out: Apple MusicKit API
