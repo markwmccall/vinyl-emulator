@@ -751,6 +751,9 @@ def settings_update():
 
 @app.route("/update/check")
 def update_check():
+    if request.args.get("force"):
+        global _update_cache
+        _update_cache = None
     return jsonify(_check_for_update())
 
 

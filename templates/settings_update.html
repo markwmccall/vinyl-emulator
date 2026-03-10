@@ -46,6 +46,14 @@
     </div>
     {% endif %}
 
+    {% if update_state != 'running' %}
+    <div class="field" style="margin-top:1rem">
+      <button type="button" class="save-btn" id="check-btn" onclick="checkForUpdates()" style="background:#555">
+        Check for Updates
+      </button>
+    </div>
+    {% endif %}
+
     {% if update_info and update_info.update_available and update_state != 'running' %}
     <div class="field" style="margin-top:1rem">
       <form method="POST" action="/update/apply">
@@ -72,12 +80,24 @@
           </label>
         </div>
       </form>
-      <p class="hint">When enabled, updates are checked and applied daily.</p>
+      <p class="hint">When enabled, updates are checked and applied hourly.</p>
     </div>
 
     {% endif %}
   </div>
 </div>
+
+<script>
+function checkForUpdates() {
+  var btn = document.getElementById('check-btn');
+  btn.textContent = 'Checking\u2026';
+  btn.disabled = true;
+  fetch('/update/check?force=1')
+    .then(function(r) { return r.json(); })
+    .then(function() { window.location.reload(); })
+    .catch(function() { window.location.reload(); });
+}
+</script>
 
 {% if update_state == 'running' or updating %}
 <script>
