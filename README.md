@@ -61,6 +61,8 @@ Attach the PN532 NFC HAT to the Pi's 40-pin GPIO header. Before powering on, con
 
 4. **Leave INT0 unconnected.**
 
+> **Note:** The Waveshare HAT routes NSS (chip select) to GPIO4 (D4), not the standard CE0 (GPIO8). This is handled automatically by the software.
+
 Insert the SD card and power on. Wait about 60 seconds, then SSH in:
 
 ```bash
