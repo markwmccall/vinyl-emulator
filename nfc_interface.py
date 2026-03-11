@@ -132,18 +132,25 @@ class PN532NFC:
             data.extend(b)
         return _parse_ndef_text(bytes(data))
 
+    def _write_block(self, block_num, data):
+        """Write one block, raising IOError on failure or missing tag."""
+        try:
+            result = self._pn532.ntag2xx_write_block(block_num, data)
+        except TypeError:
+            raise IOError("Tag write failed — tag removed or no response from reader")
+        if not result:
+            raise IOError("Tag is read-only (locked)")
+
     def write_tag(self, data):
         """Write NDEF text record. Raises IOError if tag is locked (read-only)."""
         tlv = _build_ndef_text_tlv(data)
         for i, block_num in enumerate(range(4, 4 + len(tlv) // 4)):
-            if not self._pn532.ntag2xx_write_block(block_num, tlv[i * 4:(i + 1) * 4]):
-                raise IOError("Tag is read-only (locked)")
+            self._write_block(block_num, tlv[i * 4:(i + 1) * 4])
         return True
 
     def write_url_tag(self, url):
         """Write NDEF URI record. Raises IOError if tag is locked (read-only)."""
         tlv = _build_ndef_uri_tlv(url)
         for i, block_num in enumerate(range(4, 4 + len(tlv) // 4)):
-            if not self._pn532.ntag2xx_write_block(block_num, tlv[i * 4:(i + 1) * 4]):
-                raise IOError("Tag is read-only (locked)")
+            self._write_block(block_num, tlv[i * 4:(i + 1) * 4])
         return True
