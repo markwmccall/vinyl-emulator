@@ -95,34 +95,27 @@ class MockNFC:
 
 
 class PN532NFC:
-    """Raspberry Pi NFC implementation using the Waveshare PN532 HAT via I2C.
+    """Raspberry Pi NFC implementation using the Waveshare PN532 HAT via SPI.
 
-    Expects the HAT jumpers configured for I2C mode (I0=H, I1=L) with
-    RSTPDN connected to GPIO20 (D20) for software reset after I2C failures.
-    INT0→D16 jumper connected per Waveshare docs but unused by this driver.
+    Expects the HAT DIP switches configured for SPI mode (I0=L, I1=H) with
+    RSTPDN connected to D20 per Waveshare docs. Leave INT0 unconnected.
 
-    The Adafruit PN532 I2C library ignores the irq= parameter — _wait_ready()
-    always polls via I2C status byte reads. Clock-stretch protection comes from
-    the kernel: ``options i2c_bcm2835 clk_tout_ms=200`` (set by setup.sh,
-    requires power-cycle to apply). Without this, a hung PN532 blocks the I2C
-    bus indefinitely with no error propagation to the watchdog.
+    SPI avoids the BCM2835 I2C clock-stretching problem entirely: the Pi
+    master controls the clock, so the PN532 cannot hold it low and hang
+    the bus.
+
+    Note: the Waveshare HAT routes NSS (chip select) to GPIO4 (D4), not the
+    standard SPI CE0 (GPIO8). CE0 is left unused.
     """
 
     def __init__(self):
         import board
         import busio
-        from adafruit_pn532.i2c import PN532_I2C
-        i2c = busio.I2C(board.SCL, board.SDA)
-        self._pn532 = PN532_I2C(i2c, debug=False, reset=board.D20)
-        self._pn532.SAM_configuration()
-
-    def reset(self):
-        """Hardware-reset the PN532 via RSTPDN (D20) and re-initialise.
-
-        Called by the NFC polling loop after repeated I2C failures. Recovers
-        the PN532 without requiring a power cycle of the Pi.
-        """
-        self._pn532.reset()
+        import digitalio
+        from adafruit_pn532.spi import PN532_SPI
+        spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
+        cs = digitalio.DigitalInOut(board.D4)  # Waveshare HAT routes NSS to GPIO4 (D4), not CE0
+        self._pn532 = PN532_SPI(spi, cs, debug=False, reset=board.D20)
         self._pn532.SAM_configuration()
 
     def read_tag(self):
