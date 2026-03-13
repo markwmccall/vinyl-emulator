@@ -4,7 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=authbind --deep /home/pi/vinyl-emulator/.venv/bin/python3 /home/pi/vinyl-emulator/app.py --host 0.0.0.0 --port 80
+ExecStart=authbind --deep /home/pi/vinyl-emulator/.venv/bin/python3 /home/pi/vinyl-emulator/app.py --host 0.0.0.0 --port 443 --ssl-cert /home/pi/vinyl-emulator/certs/PI_HOSTNAME.local.crt --ssl-key /home/pi/vinyl-emulator/certs/PI_HOSTNAME.local.key
 WorkingDirectory=/home/pi/vinyl-emulator
 Restart=on-failure
 RestartSec=5

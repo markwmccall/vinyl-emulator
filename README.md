@@ -83,13 +83,15 @@ You should see `/dev/spidev0.0`. If nothing appears, check that the HAT is firml
 curl -sSL https://raw.githubusercontent.com/markwmccall/vinyl-emulator/main/install.sh | bash
 ```
 
-This downloads the latest release and runs setup — installs dependencies, enables SPI, creates the config, and installs the `vinyl-web` systemd service. It will prompt you to reboot at the end.
+This downloads the latest release and runs setup — installs dependencies, enables SPI, generates an SSL certificate, creates the config, and installs the `vinyl-web` systemd service. It will prompt you to reboot at the end.
 
 > **Note for Pi Zero 2 W users:** The first run compiles `lxml` from source, which can take 10–20 minutes. This is a one-time cost.
 
 ### 5. Configure
 
-After rebooting, open `http://your-hostname.local` in your browser and go to **Settings**. Use the **Discover** button to find your Sonos speaker IP, and the **Detect** button to find your `sn` value automatically.
+After rebooting, open `https://your-hostname.local` in your browser. Your browser will show a security warning for the self-signed certificate — click through to accept it (this is expected for a local device). Go to **Settings**, use the **Discover** button to find your Sonos speaker IP, and the **Detect** button to find your `sn` value automatically.
+
+> **Sonos AppLink redirect URI:** When linking music services via Settings → Music Services, use `https://your-hostname.local/sonos/callback` as the redirect URI.
 
 ---
 

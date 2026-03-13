@@ -39,11 +39,31 @@ if ! grep -qs "dtoverlay=spi0-0cs" /boot/firmware/config.txt 2>/dev/null; then
     echo "      SPI overlay configured (spi0-0cs, CE pins free for Blinka)"
 fi
 
-# --- authbind: allow the service user to bind port 80 ---
-echo "[1b/5] Configuring authbind for port 80..."
-sudo touch /etc/authbind/byport/80
-sudo chown "$USERNAME" /etc/authbind/byport/80
-sudo chmod 500 /etc/authbind/byport/80
+# --- SSL certificate ---
+echo "[1b/5] Generating SSL certificate..."
+CERTS_DIR="$REPO_DIR/certs"
+PI_HOSTNAME="$(hostname)"
+CERT="$CERTS_DIR/$PI_HOSTNAME.local.crt"
+KEY="$CERTS_DIR/$PI_HOSTNAME.local.key"
+mkdir -p "$CERTS_DIR"
+if [ ! -f "$CERT" ] || [ ! -f "$KEY" ]; then
+    openssl req -x509 -newkey rsa:2048 \
+        -keyout "$KEY" -out "$CERT" \
+        -days 3650 -nodes \
+        -subj "/CN=$PI_HOSTNAME.local" \
+        -addext "subjectAltName=DNS:$PI_HOSTNAME.local,DNS:$PI_HOSTNAME" \
+        2>/dev/null
+    chmod 600 "$KEY"
+    echo "      SSL cert generated for $PI_HOSTNAME.local ($CERTS_DIR)"
+else
+    echo "      SSL cert already exists for $PI_HOSTNAME.local"
+fi
+
+# --- authbind: allow the service user to bind port 443 ---
+echo "[1c/5] Configuring authbind for port 443..."
+sudo touch /etc/authbind/byport/443
+sudo chown "$USERNAME" /etc/authbind/byport/443
+sudo chmod 500 /etc/authbind/byport/443
 
 # --- Stop service before touching the venv ---
 sudo systemctl stop vinyl-web 2>/dev/null || true
@@ -76,8 +96,8 @@ fi
 # --- systemd services ---
 echo "[5/5] Installing systemd services..."
 
-# Substitute actual username and repo path into service file
-sed "s|/home/pi/vinyl-emulator|$REPO_DIR|g; s|User=pi|User=$USERNAME|g" \
+# Substitute actual username, repo path, and hostname into service file
+sed "s|/home/pi/vinyl-emulator|$REPO_DIR|g; s|User=pi|User=$USERNAME|g; s|PI_HOSTNAME|$PI_HOSTNAME|g" \
     "$REPO_DIR/etc/vinyl-web.service" \
     | sudo tee /etc/systemd/system/vinyl-web.service > /dev/null
 
@@ -135,7 +155,8 @@ echo "=== Setup complete ==="
 echo ""
 echo "Next steps:"
 echo "  1. Reboot the Pi:  sudo reboot"
-echo "  2. After reboot, open http://vinyl-pi.local in your browser"
+echo "  2. After reboot, open https://$PI_HOSTNAME.local in your browser"
+echo "     (accept the self-signed certificate warning in your browser)"
 echo "  3. Go to Settings and enter your Sonos speaker IP and sn value"
 echo "  4. Tap an NFC card to play music"
 echo ""
