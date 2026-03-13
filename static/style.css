@@ -239,9 +239,10 @@ main {
 .tag-string code {
   font-family: monospace;
   background: var(--surface-input);
+  border: 1px solid var(--border-subtle);
   padding: 0.15em 0.5em;
   border-radius: var(--radius-sm);
-  color: #ccc;
+  color: var(--text-2);
   user-select: all;
 }
 
