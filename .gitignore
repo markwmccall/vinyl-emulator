@@ -12,3 +12,5 @@ update.log
 .update-rollback
 certs/
 dev-server.log
+.mcp.json
+.claude/settings.json
