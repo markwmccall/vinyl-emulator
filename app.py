@@ -186,134 +186,101 @@ def _fmt_bytes(n):
     return f"{n:.1f} PB"  # pragma: no cover
 
 
+def _safe(fn):
+    """Call fn(), returning None if any exception is raised."""
+    try:
+        return fn()
+    except Exception:
+        return None
+
+
+def _read_os_release():
+    with open("/etc/os-release") as f:
+        pairs = {}
+        for line in f:
+            line = line.strip()
+            if "=" in line:
+                k, v = line.split("=", 1)
+                pairs[k] = v.strip('"')
+    return pairs.get("PRETTY_NAME")
+
+
+def _read_uptime():
+    uptime_secs = int(time.time() - psutil.boot_time())
+    d, rem = divmod(uptime_secs, 86400)
+    h, rem = divmod(rem, 3600)
+    m = rem // 60
+    parts = []
+    if d:
+        parts.append(f"{d}d")
+    if h:
+        parts.append(f"{h}h")
+    parts.append(f"{m}m")
+    return " ".join(parts)
+
+
+def _read_cpu_model():
+    with open("/proc/cpuinfo") as f:
+        for line in f:
+            if line.startswith("Model"):
+                return line.split(":", 1)[1].strip()
+    return None
+
+
+def _read_cpu_temp():
+    with open("/sys/class/thermal/thermal_zone0/temp") as f:
+        return round(int(f.read().strip()) / 1000, 1)
+
+
+def _read_throttle():
+    """Return (throttle_ok, flags) tuple from vcgencmd, or raise on failure."""
+    result = subprocess.run(
+        ["vcgencmd", "get_throttled"],
+        capture_output=True, text=True, timeout=2,
+    )
+    hex_val = result.stdout.strip().split("=")[-1]
+    throttled = int(hex_val, 16)
+    flags = []
+    if throttled & 0x1:     flags.append("Under-voltage detected")
+    if throttled & 0x2:     flags.append("Arm frequency capped")
+    if throttled & 0x4:     flags.append("Currently throttled")
+    if throttled & 0x8:     flags.append("Soft temperature limit active")
+    if throttled & 0x10000: flags.append("Under-voltage has occurred")
+    if throttled & 0x20000: flags.append("Arm frequency has been capped")
+    if throttled & 0x40000: flags.append("Throttling has occurred")
+    if throttled & 0x80000: flags.append("Soft temperature limit has occurred")
+    return throttled == 0, flags
+
+
 def _get_hardware_stats():
-    stats = {}
-
-    # System
-    try:
-        stats["hostname"] = os.uname().nodename
-    except Exception:  # pragma: no cover
-        stats["hostname"] = None
-
-    try:
-        with open("/etc/os-release") as f:
-            pairs = {}
-            for line in f:
-                line = line.strip()
-                if "=" in line:
-                    k, v = line.split("=", 1)
-                    pairs[k] = v.strip('"')
-        stats["os"] = pairs.get("PRETTY_NAME")
-    except Exception:
-        stats["os"] = None
-
-    try:
-        stats["kernel"] = os.uname().release
-    except Exception:  # pragma: no cover
-        stats["kernel"] = None
-
-    try:
-        uptime_secs = int(time.time() - psutil.boot_time())
-        d, rem = divmod(uptime_secs, 86400)
-        h, rem = divmod(rem, 3600)
-        m = rem // 60
-        parts = []
-        if d:
-            parts.append(f"{d}d")
-        if h:
-            parts.append(f"{h}h")
-        parts.append(f"{m}m")
-        stats["uptime"] = " ".join(parts)
-    except Exception:
-        stats["uptime"] = None
-
-    # Processor
-    try:
-        cpu_model = None
-        with open("/proc/cpuinfo") as f:
-            for line in f:
-                if line.startswith("Model"):
-                    cpu_model = line.split(":", 1)[1].strip()
-                    break
-        stats["cpu_model"] = cpu_model
-    except Exception:
-        stats["cpu_model"] = None
-
-    try:
-        stats["cpu_cores"] = psutil.cpu_count(logical=False) or psutil.cpu_count()
-    except Exception:
-        stats["cpu_cores"] = None
-
-    try:
-        stats["cpu_percent"] = psutil.cpu_percent(interval=0.1)
-    except Exception:
-        stats["cpu_percent"] = None
-
-    try:
-        freq = psutil.cpu_freq()
-        stats["cpu_freq_mhz"] = round(freq.current) if freq else None
-    except Exception:
-        stats["cpu_freq_mhz"] = None
-
-    try:
-        with open("/sys/class/thermal/thermal_zone0/temp") as f:
-            stats["cpu_temp_c"] = round(int(f.read().strip()) / 1000, 1)
-    except Exception:
-        stats["cpu_temp_c"] = None
-
-    # Memory
-    try:
-        mem = psutil.virtual_memory()
-        stats["ram_used"] = _fmt_bytes(mem.used)
-        stats["ram_total"] = _fmt_bytes(mem.total)
-        stats["ram_percent"] = mem.percent
-    except Exception:
-        stats["ram_used"] = stats["ram_total"] = stats["ram_percent"] = None
-
-    try:
-        swap = psutil.swap_memory()
-        stats["swap_used"] = _fmt_bytes(swap.used)
-        stats["swap_total"] = _fmt_bytes(swap.total)
-    except Exception:
-        stats["swap_used"] = stats["swap_total"] = None
-
-    # Storage
-    try:
-        disk = psutil.disk_usage("/")
-        stats["disk_used"] = _fmt_bytes(disk.used)
-        stats["disk_free"] = _fmt_bytes(disk.free)
-        stats["disk_total"] = _fmt_bytes(disk.total)
-        stats["disk_percent"] = disk.percent
-    except Exception:
-        stats["disk_used"] = stats["disk_free"] = stats["disk_total"] = stats["disk_percent"] = None
-
-    # NFC reader
-    stats["nfc_connected"] = _nfc is not None
-
-    # Power throttling (Raspberry Pi only — vcgencmd)
-    try:
-        result = subprocess.run(
-            ["vcgencmd", "get_throttled"],
-            capture_output=True, text=True, timeout=2,
-        )
-        hex_val = result.stdout.strip().split("=")[-1]
-        throttled = int(hex_val, 16)
-        flags = []
-        if throttled & 0x1:     flags.append("Under-voltage detected")
-        if throttled & 0x2:     flags.append("Arm frequency capped")
-        if throttled & 0x4:     flags.append("Currently throttled")
-        if throttled & 0x8:     flags.append("Soft temperature limit active")
-        if throttled & 0x10000: flags.append("Under-voltage has occurred")
-        if throttled & 0x20000: flags.append("Arm frequency has been capped")
-        if throttled & 0x40000: flags.append("Throttling has occurred")
-        if throttled & 0x80000: flags.append("Soft temperature limit has occurred")
-        stats["throttle_ok"] = throttled == 0
-        stats["throttle_flags"] = flags
-    except Exception:
-        stats["throttle_ok"] = None
-        stats["throttle_flags"] = None
-
-    return stats
+    mem = _safe(psutil.virtual_memory)
+    swap = _safe(psutil.swap_memory)
+    disk = _safe(lambda: psutil.disk_usage("/"))
+    freq = _safe(psutil.cpu_freq)
+    throttle = _safe(_read_throttle)
+    return {
+        "hostname":       _safe(lambda: os.uname().nodename),
+        "os":             _safe(_read_os_release),
+        "kernel":         _safe(lambda: os.uname().release),
+        "uptime":         _safe(_read_uptime),
+        "cpu_model":      _safe(_read_cpu_model),
+        "cpu_cores":      _safe(lambda: psutil.cpu_count(logical=False) or psutil.cpu_count()),
+        "cpu_percent":    _safe(lambda: psutil.cpu_percent(interval=0.1)),
+        "cpu_freq_mhz":   round(freq.current) if freq else None,
+        "cpu_temp_c":     _safe(_read_cpu_temp),
+        "ram_used":       _fmt_bytes(mem.used) if mem else None,
+        "ram_total":      _fmt_bytes(mem.total) if mem else None,
+        "ram_percent":    mem.percent if mem else None,
+        "swap_used":      _fmt_bytes(swap.used) if swap else None,
+        "swap_total":     _fmt_bytes(swap.total) if swap else None,
+        "disk_used":      _fmt_bytes(disk.used) if disk else None,
+        "disk_free":      _fmt_bytes(disk.free) if disk else None,
+        "disk_total":     _fmt_bytes(disk.total) if disk else None,
+        "disk_percent":   disk.percent if disk else None,
+        "nfc_connected":  _nfc is not None,
+        "throttle_ok":    throttle[0] if throttle else None,
+        "throttle_flags": throttle[1] if throttle else None,
+    }
 
 
 
