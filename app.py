@@ -443,7 +443,7 @@ def _nfc_loop(config_path):
                           else provider.get_album_tracks(tag["id"]))
                 play_album(config["speaker_ip"], tracks, provider, config["sn"],
                            speaker_name=config.get("speaker_name"), config_path=config_path)
-            log.info(f"Playing {tag['type']} {tag['id']}")
+            log.info("Playing %s %s", tag['type'], tag['id'])
         except Exception as e:
             log.error("NFC play error: %s", e, exc_info=True)
 
@@ -464,7 +464,7 @@ def _start_nfc_thread(config_path):
     try:
         _nfc = PN532NFC()
     except Exception as e:
-        log.error(f"Failed to initialise PN532: {e}")
+        log.error("Failed to initialise PN532: %s", e)
         return
     t = threading.Thread(target=_nfc_loop, args=(config_path,), daemon=True)
     t.start()
@@ -491,8 +491,8 @@ def _format_existing_tag(tag_string):
             tracks = provider.get_album_tracks(tag["id"])
             if tracks:
                 return f"{tracks[0]['album']} by {tracks[0]['artist']}"
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug("Could not resolve display name for %s: %s", tag_string, e)
     return tag_string
 
 

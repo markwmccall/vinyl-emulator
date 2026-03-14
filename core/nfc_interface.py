@@ -85,12 +85,12 @@ class MockNFC:
 
     def write_tag(self, data):
         """Print what would be written to the physical tag."""
-        log.info(f"[MockNFC] Would write: {data}")
+        log.info("[MockNFC] Would write: %s", data)
         return True
 
     def write_url_tag(self, url):
         """Print what URL would be written to the physical tag."""
-        log.info(f"[MockNFC] Would write URL: {url}")
+        log.info("[MockNFC] Would write URL: %s", url)
         return True
 
 
