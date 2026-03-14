@@ -316,15 +316,23 @@ class AppleMusicProvider(MusicProvider):
             return []
         try:
             items, _ = self._smapi.get_metadata(f"libraryplaylist:{playlist_id}", count=200)
-            return [
-                {
+            results = []
+            for item in items:
+                if item.get("item_type") != "track":
+                    continue
+                raw_id = item.get("id", "")
+                for prefix in ("track:", "song:"):
+                    if raw_id.startswith(prefix):
+                        raw_id = raw_id[len(prefix):]
+                        break
+                track_id = int(raw_id) if raw_id.isdigit() else None
+                results.append({
                     "name": item.get("title", ""),
                     "artist": item.get("artist", ""),
                     "album": item.get("album", ""),
-                }
-                for item in items
-                if item.get("item_type") == "track"
-            ]
+                    "track_id": track_id,
+                })
+            return results
         except Exception as e:
             log.warning("get_playlist_tracks failed for %s: %s", playlist_id, e)
             return []

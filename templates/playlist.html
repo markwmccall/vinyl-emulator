@@ -32,7 +32,11 @@
     {% for track in tracks %}
     <li class="track">
       <span class="track-num">{{ loop.index }}</span>
+      {% if track.track_id %}
+      <a href="/track/{{ track.track_id }}" class="track-name">{{ track.name }}</a>
+      {% else %}
       <span class="track-name">{{ track.name }}</span>
+      {% endif %}
       <span class="track-artist">{{ track.artist }}</span>
     </li>
     {% endfor %}

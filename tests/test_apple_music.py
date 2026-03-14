@@ -289,8 +289,18 @@ class TestGetPlaylistTracks:
         tracks = p.get_playlist_tracks("p.ABC123")
         p._smapi.get_metadata.assert_called_once_with("libraryplaylist:p.ABC123", count=200)
         assert len(tracks) == 2
-        assert tracks[0] == {"name": "Track One", "artist": "Artist A", "album": "Album X"}
-        assert tracks[1] == {"name": "Track Two", "artist": "Artist B", "album": "Album Y"}
+        assert tracks[0] == {"name": "Track One", "artist": "Artist A", "album": "Album X", "track_id": 111}
+        assert tracks[1] == {"name": "Track Two", "artist": "Artist B", "album": "Album Y", "track_id": 222}
+
+    def test_track_id_none_for_non_numeric(self):
+        p = _make_smapi_provider()
+        p._smapi.get_metadata = MagicMock(return_value=([
+            {"id": "track:p.LibraryOnly", "title": "Library Track", "artist": "A",
+             "album": "B", "item_type": "track"},
+        ], 1))
+        tracks = p.get_playlist_tracks("p.ABC")
+        assert len(tracks) == 1
+        assert tracks[0]["track_id"] is None
 
     def test_filters_non_track_items(self):
         p = _make_smapi_provider()
