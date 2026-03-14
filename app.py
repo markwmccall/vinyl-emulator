@@ -106,6 +106,12 @@ def _load_config():
     return config
 
 
+def _save_config(config):
+    """Persist config dict to CONFIG_PATH."""
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(config, f, indent=2)
+
+
 def _configure_sonos():
     """If Sonos Control API tokens are present in config, configure providers."""
     try:
@@ -127,13 +133,11 @@ def _configure_sonos():
 
     def _on_sonos_token_refresh(new_access_token, new_refresh_token):
         try:
-            with open(CONFIG_PATH) as f:
-                cfg = json.load(f)
+            cfg = _load_config()
             cfg.setdefault("services", {}).setdefault("sonos", {})
             cfg["services"]["sonos"]["access_token"] = new_access_token
             cfg["services"]["sonos"]["refresh_token"] = new_refresh_token
-            with open(CONFIG_PATH, "w") as f:
-                json.dump(cfg, f, indent=2)
+            _save_config(cfg)
             log.info("Persisted refreshed Sonos token to config")
         except Exception as e:
             log.warning("Failed to persist Sonos token: %s", e)
@@ -162,13 +166,11 @@ def _configure_smapi():
     def _on_token_refresh(new_token, new_key):
         """Persist refreshed SMAPI tokens to config.json."""
         try:
-            with open(CONFIG_PATH) as f:
-                cfg = json.load(f)
+            cfg = _load_config()
             cfg.setdefault("services", {}).setdefault("apple", {})
             cfg["services"]["apple"]["smapi_token"] = new_token
             cfg["services"]["apple"]["smapi_key"] = new_key
-            with open(CONFIG_PATH, "w") as f:
-                json.dump(cfg, f, indent=2)
+            _save_config(cfg)
             log.info("Persisted refreshed SMAPI token to config")
         except Exception as e:
             log.warning("Failed to persist SMAPI token: %s", e)
@@ -697,8 +699,7 @@ def settings_sonos():
         config["speaker_ip"] = request.form.get("speaker_ip", config["speaker_ip"])
         config["speaker_name"] = request.form.get("speaker_name", config.get("speaker_name", ""))
         config["sn"] = request.form.get("sn", config["sn"])
-        with open(CONFIG_PATH, "w") as f:
-            json.dump(config, f, indent=2)
+        _save_config(config)
         saved = True
     if "csrf_token" not in session:
         session["csrf_token"] = secrets.token_hex(32)
@@ -727,15 +728,13 @@ def settings_music_credentials():
     token = request.form.get("csrf_token", "")
     if not token or token != session.get("csrf_token"):
         abort(403)
-    with open(CONFIG_PATH) as f:
-        cfg = json.load(f)
+    cfg = _load_config()
     cfg.setdefault("services", {}).setdefault("sonos", {})
     cfg["services"]["sonos"]["client_key"] = request.form.get("client_key", "").strip()
     cfg["services"]["sonos"]["client_id"] = request.form.get("client_id", "").strip()
     cfg["services"]["sonos"]["client_secret"] = request.form.get("client_secret", "").strip()
     cfg["services"]["sonos"]["redirect_uri"] = request.form.get("redirect_uri", "").strip()
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(cfg, f, indent=2)
+    _save_config(cfg)
     return redirect(url_for("settings_music") + "?saved=1")
 
 
@@ -799,14 +798,12 @@ def sonos_callback():
         if not household_id:
             return redirect(url_for("settings_music") + "?error=no_households")
 
-        with open(CONFIG_PATH) as f:
-            cfg = json.load(f)
+        cfg = _load_config()
         cfg.setdefault("services", {}).setdefault("sonos", {})
         cfg["services"]["sonos"]["access_token"] = access_token
         cfg["services"]["sonos"]["refresh_token"] = refresh_token
         cfg["services"]["sonos"]["household_id"] = household_id
-        with open(CONFIG_PATH, "w") as f:
-            json.dump(cfg, f, indent=2)
+        _save_config(cfg)
 
         _configure_sonos()
         log.info("Sonos account connected (household=%s)", household_id)
@@ -834,11 +831,9 @@ def sonos_disconnect():
     if not token or token != session.get("csrf_token"):
         abort(403)
     try:
-        with open(CONFIG_PATH) as f:
-            cfg = json.load(f)
+        cfg = _load_config()
         cfg.get("services", {}).get("sonos", {}).clear()
-        with open(CONFIG_PATH, "w") as f:
-            json.dump(cfg, f, indent=2)
+        _save_config(cfg)
         provider = get_provider("apple")
         provider._sonos_client = None
         provider._sonos_access_token = None
@@ -858,8 +853,7 @@ def settings_nfc():
         if not token or token != session.get("csrf_token"):
             abort(403)
         config["nfc_mode"] = request.form.get("nfc_mode", config["nfc_mode"])
-        with open(CONFIG_PATH, "w") as f:
-            json.dump(config, f, indent=2)
+        _save_config(config)
         return redirect(url_for("settings_hardware", nfc_saved=1))
     return redirect(url_for("settings_hardware"))
 
@@ -1045,8 +1039,7 @@ def update_auto():
         abort(403)
     config = _load_config()
     config["auto_update"] = request.form.get("auto_update") == "1"
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(config, f, indent=2)
+    _save_config(config)
     return redirect(url_for("settings_update"))
 
 
