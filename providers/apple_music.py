@@ -310,6 +310,33 @@ class AppleMusicProvider(MusicProvider):
             pass
         return None
 
+    def get_playlist_tracks(self, playlist_id: str) -> List[Dict]:
+        """Return tracks for a personal playlist ID like 'p.PvVos1vxbV'."""
+        if not self._smapi:
+            return []
+        try:
+            items, _ = self._smapi.get_metadata(f"libraryplaylist:{playlist_id}", count=200)
+            results = []
+            for item in items:
+                if item.get("item_type") != "track":
+                    continue
+                raw_id = item.get("id", "")
+                for prefix in ("track:", "song:"):
+                    if raw_id.startswith(prefix):
+                        raw_id = raw_id[len(prefix):]
+                        break
+                track_id = int(raw_id) if raw_id.isdigit() else None
+                results.append({
+                    "name": item.get("title", ""),
+                    "artist": item.get("artist", ""),
+                    "album": item.get("album", ""),
+                    "track_id": track_id,
+                })
+            return results
+        except Exception as e:
+            log.warning("get_playlist_tracks failed for %s: %s", playlist_id, e)
+            return []
+
     def build_track_uri(self, track_id: str, sn: int) -> str:
         return f"x-sonos-http:song%3a{track_id}.mp4?sid=204&flags=8232&sn={sn}"
 
