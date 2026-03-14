@@ -54,7 +54,7 @@ def _inject_version():
 _nfc_lock = threading.Lock()
 _nfc = None
 _nfc_last_tag = None       # debounce: last tag seen by the loop
-_web_read_pending = False  # True while /read-tag is waiting for a card
+_web_read_pending = threading.Event()  # set while /read-tag is waiting for a card
 _nfc_read_queue = queue.Queue(maxsize=1)  # loop posts here when _web_read_pending
 
 # Watchdog: after this many consecutive errors, back off polling and warn.
@@ -382,7 +382,7 @@ def _nfc_loop(config_path):
             _nfc_last_tag = None
             continue
 
-        if _web_read_pending:
+        if _web_read_pending.is_set():
             # /read-tag is waiting — hand off the result, skip playback.
             # Check before debounce so a card already on the reader is delivered.
             _nfc_last_tag = tag_data
@@ -1070,7 +1070,6 @@ def speakers():
 
 @app.route("/read-tag")
 def read_tag():
-    global _web_read_pending
     config = _load_config()
     tag_string = request.args.get("tag")
     if tag_string is None:
@@ -1078,13 +1077,13 @@ def read_tag():
             if _nfc is None:
                 return jsonify({"tag_string": None, "tag_type": None, "content_id": None,
                                 "album": None, "error": "NFC not initialised"})
-            _web_read_pending = True
+            _web_read_pending.set()
             try:
                 tag_string = _nfc_read_queue.get(timeout=8.0)
             except queue.Empty:
                 tag_string = None
             finally:
-                _web_read_pending = False
+                _web_read_pending.clear()
                 # Drain any stale queued result
                 while not _nfc_read_queue.empty():
                     try:

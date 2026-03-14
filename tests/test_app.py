@@ -1532,12 +1532,14 @@ class TestNfcLoop:
         mock_play.assert_not_called()
 
     def test_web_read_pending_delivers_to_queue_skips_play(self, pn532_config, monkeypatch):
-        """When _web_read_pending is True, loop puts to queue and skips playback."""
-        import app, queue as q
+        """When _web_read_pending is set, loop puts to queue and skips playback."""
+        import app, queue as q, threading
         mock_nfc = MagicMock()
         mock_nfc.read_tag.side_effect = ["apple:1440903625", KeyboardInterrupt]
         monkeypatch.setattr(app, "_nfc", mock_nfc)
-        monkeypatch.setattr(app, "_web_read_pending", True)
+        pending = threading.Event()
+        pending.set()
+        monkeypatch.setattr(app, "_web_read_pending", pending)
         fresh_queue = q.Queue(maxsize=1)
         monkeypatch.setattr(app, "_nfc_read_queue", fresh_queue)
         with patch("app.play_album") as mock_play:
@@ -1548,11 +1550,13 @@ class TestNfcLoop:
 
     def test_web_read_pending_queue_full_continues(self, pn532_config, monkeypatch):
         """When queue is already full, put_nowait raises Full and loop continues."""
-        import app, queue as q
+        import app, queue as q, threading
         mock_nfc = MagicMock()
         mock_nfc.read_tag.side_effect = ["apple:1440903625", KeyboardInterrupt]
         monkeypatch.setattr(app, "_nfc", mock_nfc)
-        monkeypatch.setattr(app, "_web_read_pending", True)
+        pending = threading.Event()
+        pending.set()
+        monkeypatch.setattr(app, "_web_read_pending", pending)
         fresh_queue = q.Queue(maxsize=1)
         fresh_queue.put("existing")  # queue already full
         monkeypatch.setattr(app, "_nfc_read_queue", fresh_queue)
